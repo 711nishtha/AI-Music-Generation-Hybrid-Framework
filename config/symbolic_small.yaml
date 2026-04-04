@@ -1,0 +1,33 @@
+# Small symbolic planner config — trains in ~1-2 hours on a single GPU
+model:
+  vocab_size: 512      # filled dynamically from tokenizer
+  d_model: 256
+  n_heads: 8
+  n_layers_enc: 4
+  n_layers_dec: 6
+  d_ff: 1024
+  max_len: 2048
+  dropout: 0.1
+
+training:
+  batch_size: 8
+  grad_accum: 4        # effective batch = 32
+  lr: 3.0e-4
+  lr_min: 1.0e-5
+  warmup_steps: 500
+  max_steps: 10000
+  max_seq_len: 1024
+  clip_grad: 1.0
+  weight_decay: 0.01
+  save_every: 1000
+  eval_every: 500
+  log_every: 50
+
+paths:
+  train_tokens: data/subsets/train_tokens.json
+  val_tokens:   data/subsets/val_tokens.json
+  checkpoint:   checkpoints/symbolic/
+  runs:         runs/symbolic/
+
+device: auto   # auto-detect cuda/cpu
+amp: true      # mixed precision

@@ -1,0 +1,31 @@
+model:
+  vocab_size: 512
+  d_model: 128
+  channel_mults: [1, 2, 2, 4]
+  attn_resolutions: [false, true, true, true]
+  n_heads: 4
+  d_context: 256
+  T_steps: 1000
+  dropout: 0.1
+
+training:
+  batch_size: 4
+  grad_accum: 4
+  lr: 2.0e-4
+  max_steps: 8000
+  clip_grad: 1.0
+  warmup_steps: 200
+  save_every: 1000
+  eval_every: 500
+  log_every: 50
+  max_seq_len: 512
+
+paths:
+  train_pairs: data/subsets/train_pairs.json
+  val_pairs:   data/subsets/val_pairs.json
+  checkpoint:  checkpoints/renderer/
+  runs:        runs/renderer/
+
+device: auto
+amp: true
+ddim_steps: 50
