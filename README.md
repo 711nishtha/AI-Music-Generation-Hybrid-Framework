@@ -238,3 +238,8 @@ ai-music-gen/
 Based on the research proposal:
 > "AI in Music Generation" — Hybrid Framework with Symbolic Planning,
 > Diffusion Audio Rendering, and Preference Alignment (2026)
+
+
+<sub>
+Note: The provided outputs represent sample results generated using a prototype implementation. Due to computational constraints, full-scale training was not performed, and the outputs are included to demonstrate the system pipeline and generation capability.
+</sub>
