@@ -1,777 +1,873 @@
-<!-- Competition-winning interactive demo website for AI-Music-Generation-Hybrid-Framework – fully dynamic with real audio from outputs/ folder -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Music Generation — Hybrid Framework | Ganpat University 2026</title>
+<title>AI Music Generation — Hybrid Framework · Ganpat University 2026</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
-  :root {
-    --cyan: #00f5ff;
-    --blue: #0066ff;
-    --purple: #7c3aed;
-    --magenta: #ff00c8;
-    --gold: #ffd700;
-    --bg: #030508;
-    --surface: rgba(255,255,255,0.03);
-    --border: rgba(0,245,255,0.12);
-    --text: #e8eaf0;
-    --muted: #6b7280;
-  }
+/* ═══════════════════════════════════════════
+   DESIGN SYSTEM — Noir Conservatoire
+═══════════════════════════════════════════ */
+:root {
+  --obsidian:  #07070f;
+  --deep:      #0d0d1a;
+  --surface:   #13131f;
+  --surface2:  #1a1a2e;
+  --gold:      #d4a853;
+  --gold-lt:   #f0c96a;
+  --gold-dim:  #8a6a2a;
+  --violet:    #7c6ef9;
+  --violet-lt: #a99eff;
+  --teal:      #2dd4bf;
+  --cream:     #f5f0e8;
+  --cream-dim: #a09888;
+  --warn:      #f97316;
+  --border:    rgba(212,168,83,0.12);
+  --border-v:  rgba(124,110,249,0.18);
+}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  background: var(--obsidian);
+  color: var(--cream);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 400;
+  overflow-x: hidden;
+  cursor: none;
+}
+h1,h2,h3 { font-family: 'Playfair Display', serif; }
+code, pre, .mono { font-family: 'Fira Code', monospace; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    overflow-x: hidden;
-    cursor: none;
-  }
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: var(--obsidian); }
+::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
 
-  h1,h2,h3,h4 { font-family: 'Syne', sans-serif; }
-  code, pre, .mono { font-family: 'Space Mono', monospace; }
+/* ── Custom Cursor ── */
+#cur { position:fixed;width:7px;height:7px;background:var(--gold);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s;mix-blend-mode:screen; }
+#cur-ring { position:fixed;width:32px;height:32px;border:1px solid rgba(212,168,83,.35);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:all .1s ease; }
 
-  /* Custom cursor */
-  #cursor {
-    position: fixed; width: 10px; height: 10px;
-    background: var(--cyan); border-radius: 50%;
-    pointer-events: none; z-index: 9999;
-    transform: translate(-50%,-50%);
-    transition: width 0.2s, height 0.2s, opacity 0.2s;
-    mix-blend-mode: screen;
-  }
-  #cursor-ring {
-    position: fixed; width: 36px; height: 36px;
-    border: 1px solid rgba(0,245,255,0.4);
-    border-radius: 50%; pointer-events: none; z-index: 9998;
-    transform: translate(-50%,-50%);
-    transition: all 0.12s ease;
-  }
-  a:hover ~ #cursor, button:hover ~ #cursor { width: 20px; height: 20px; }
+/* ── Canvas background ── */
+#bg-canvas { position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.6; }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: #000; }
-  ::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 2px; }
+/* ── Grain overlay ── */
+body::after {
+  content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:.028;
+}
 
-  /* Nav */
-  nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    padding: 1.25rem 2.5rem;
-    background: rgba(3,5,8,0.85);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .nav-logo {
-    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.9rem;
-    background: linear-gradient(135deg, var(--cyan), var(--purple));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    letter-spacing: -0.02em;
-  }
-  .nav-links { display: flex; gap: 2rem; }
-  .nav-links a {
-    font-size: 0.78rem; font-weight: 500; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--muted);
-    text-decoration: none; transition: color 0.2s;
-  }
-  .nav-links a:hover { color: var(--cyan); }
+/* ── Nav ── */
+nav {
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.1rem 2.5rem;
+  background:rgba(7,7,15,0.8);
+  backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);
+}
+.nav-wordmark {
+  font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;font-style:italic;
+  color:var(--gold);letter-spacing:.01em;
+}
+.nav-links { display:flex;gap:2rem; }
+.nav-links a {
+  font-size:.72rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--cream-dim);text-decoration:none;transition:color .2s;
+}
+.nav-links a:hover { color:var(--gold); }
 
-  /* Competition badge */
-  .comp-badge {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.35rem 0.85rem;
-    background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,215,0,0.05));
-    border: 1px solid rgba(255,215,0,0.35);
-    border-radius: 100px;
-    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--gold);
-    animation: pulse-gold 3s ease-in-out infinite;
-  }
-  @keyframes pulse-gold {
-    0%,100% { box-shadow: 0 0 0 0 rgba(255,215,0,0.15); }
-    50% { box-shadow: 0 0 20px 4px rgba(255,215,0,0.15); }
-  }
+/* ── Competition badge ── */
+.comp-badge {
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.28rem .75rem;
+  background:rgba(212,168,83,.08);
+  border:1px solid rgba(212,168,83,.3);
+  border-radius:100px;
+  font-size:.64rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--gold);
+  animation:badge-glow 4s ease-in-out infinite;
+}
+@keyframes badge-glow {
+  0%,100%{box-shadow:0 0 0 0 rgba(212,168,83,.1);}
+  50%{box-shadow:0 0 20px 4px rgba(212,168,83,.12);}
+}
 
-  /* Hero */
-  #hero {
-    min-height: 100vh;
-    display: flex; align-items: center;
-    position: relative; overflow: hidden;
-    padding: 7rem 2.5rem 4rem;
-  }
-  #particle-canvas {
-    position: absolute; inset: 0;
-    pointer-events: none; z-index: 0;
-  }
-  .hero-content {
-    position: relative; z-index: 2;
-    max-width: 860px;
-    margin-left: 4%;
-  }
-  .hero-eyebrow {
-    display: flex; align-items: center; gap: 0.75rem;
-    margin-bottom: 1.75rem;
-  }
-  .eyebrow-line {
-    width: 48px; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--cyan));
-  }
-  .eyebrow-text {
-    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--cyan);
-  }
-  .hero-title {
-    font-size: clamp(2.6rem, 6vw, 5.5rem);
-    font-weight: 800; line-height: 1.0; letter-spacing: -0.03em;
-    margin-bottom: 1.5rem;
-  }
-  .title-grad {
-    background: linear-gradient(135deg, #fff 0%, var(--cyan) 40%, var(--purple) 80%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    display: block;
-  }
-  .hero-desc {
-    font-size: 1.05rem; line-height: 1.75; color: #94a3b8;
-    max-width: 580px; margin-bottom: 2.5rem;
-    font-weight: 300;
-  }
-  .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 3.5rem; }
+/* ── Hero ── */
+#hero {
+  min-height:100vh;display:flex;align-items:center;
+  position:relative;overflow:hidden;
+  padding:7rem 2.5rem 5rem;
+}
+.hero-bg-glow {
+  position:absolute;top:-20%;right:-10%;
+  width:min(700px,70vw);height:min(700px,70vw);
+  background:radial-gradient(circle,rgba(124,110,249,.12) 0%,rgba(212,168,83,.06) 40%,transparent 70%);
+  border-radius:50%;pointer-events:none;
+  animation:glow-drift 8s ease-in-out infinite alternate;
+}
+.hero-bg-glow2 {
+  position:absolute;bottom:-20%;left:-5%;
+  width:min(500px,50vw);height:min(500px,50vw);
+  background:radial-gradient(circle,rgba(45,212,191,.08) 0%,transparent 65%);
+  border-radius:50%;pointer-events:none;
+  animation:glow-drift 12s ease-in-out infinite alternate-reverse;
+}
+@keyframes glow-drift {
+  from{transform:translate(0,0) scale(1);}
+  to{transform:translate(30px,20px) scale(1.08);}
+}
 
-  /* Buttons */
-  .btn-primary {
-    display: inline-flex; align-items: center; gap: 0.6rem;
-    padding: 0.85rem 1.75rem;
-    background: linear-gradient(135deg, var(--cyan), var(--blue));
-    color: #000; font-weight: 700; font-size: 0.85rem;
-    letter-spacing: 0.05em; text-transform: uppercase;
-    border: none; border-radius: 6px; cursor: pointer;
-    text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s;
-    position: relative; overflow: hidden;
-  }
-  .btn-primary::after {
-    content: ''; position: absolute; inset: 0;
-    background: rgba(255,255,255,0.15);
-    transform: translateX(-100%);
-    transition: transform 0.3s;
-  }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(0,245,255,0.4); }
-  .btn-primary:hover::after { transform: translateX(0); }
+.hero-inner { position:relative;z-index:2;max-width:1100px;margin:0 auto;width:100%; }
+.hero-grid { display:grid;grid-template-columns:1fr 420px;gap:4rem;align-items:center; }
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr;}.hero-right{display:none;}}
 
-  .btn-outline {
-    display: inline-flex; align-items: center; gap: 0.6rem;
-    padding: 0.85rem 1.75rem;
-    background: transparent;
-    color: var(--cyan); font-weight: 600; font-size: 0.85rem;
-    letter-spacing: 0.05em; text-transform: uppercase;
-    border: 1px solid rgba(0,245,255,0.4);
-    border-radius: 6px; cursor: pointer; text-decoration: none;
-    transition: all 0.2s;
-  }
-  .btn-outline:hover {
-    background: rgba(0,245,255,0.06);
-    border-color: var(--cyan);
-    box-shadow: 0 0 20px rgba(0,245,255,0.15);
-    transform: translateY(-2px);
-  }
+.hero-kicker {
+  display:inline-flex;align-items:center;gap:.75rem;
+  margin-bottom:1.5rem;
+}
+.kicker-dot {
+  width:6px;height:6px;border-radius:50%;background:var(--teal);
+  box-shadow:0 0 10px var(--teal);
+  animation:dot-pulse 2s ease-in-out infinite;
+}
+@keyframes dot-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.6);}}
+.kicker-text {
+  font-size:.7rem;font-weight:500;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--teal);
+}
 
-  /* Hero orb */
-  .hero-orb {
-    position: absolute; right: 6%; top: 50%;
-    transform: translateY(-50%);
-    width: min(500px, 40vw); height: min(500px, 40vw);
-    z-index: 1;
-  }
-  .orb-ring {
-    position: absolute; inset: 0;
-    border-radius: 50%;
-    border: 1px solid rgba(0,245,255,0.15);
-    animation: orb-spin 20s linear infinite;
-  }
-  .orb-ring:nth-child(2) {
-    inset: 15%;
-    border-color: rgba(124,58,237,0.2);
-    animation-duration: 14s; animation-direction: reverse;
-  }
-  .orb-ring:nth-child(3) {
-    inset: 30%;
-    border-color: rgba(0,102,255,0.25);
-    animation-duration: 8s;
-  }
-  .orb-core {
-    position: absolute; inset: 35%;
-    background: radial-gradient(circle, rgba(0,245,255,0.3) 0%, rgba(124,58,237,0.2) 50%, transparent 70%);
-    border-radius: 50%;
-    animation: orb-pulse 4s ease-in-out infinite;
-  }
-  .orb-dot {
-    position: absolute; width: 8px; height: 8px;
-    background: var(--cyan); border-radius: 50%;
-    top: 50%; left: 0%; margin-left: -4px; margin-top: -4px;
-    box-shadow: 0 0 12px var(--cyan);
-    transform-origin: calc(min(250px,20vw)) 0;
-  }
-  @keyframes orb-spin { to { transform: rotate(360deg); } }
-  @keyframes orb-pulse {
-    0%,100% { transform: scale(1); opacity: 0.8; }
-    50% { transform: scale(1.15); opacity: 1; }
-  }
+.hero-title {
+  font-size:clamp(2.8rem,6.5vw,6rem);
+  font-weight:900;line-height:.95;
+  letter-spacing:-.04em;
+  margin-bottom:1.75rem;
+}
+.hero-title em {
+  font-style:italic;
+  background:linear-gradient(135deg,var(--gold) 0%,var(--gold-lt) 50%,var(--violet-lt) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
 
-  /* Hero waveform */
-  #hero-wave { display: block; margin-top: 0.5rem; }
+.hero-desc {
+  font-size:1.05rem;line-height:1.8;color:var(--cream-dim);
+  max-width:520px;margin-bottom:2.5rem;font-weight:300;
+}
+.hero-desc strong { color:var(--cream);font-weight:500; }
 
-  /* Sections */
-  section { position: relative; overflow: hidden; }
-  .section-pad { padding: 7rem 2.5rem; }
+.hero-btns { display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:3rem; }
 
-  /* Section labels */
-  .section-label {
-    display: inline-flex; align-items: center; gap: 0.6rem;
-    margin-bottom: 1rem;
-  }
-  .label-num {
-    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.2em;
-    color: var(--cyan); text-transform: uppercase;
-  }
-  .label-line { flex: 1; max-width: 36px; height: 1px; background: var(--cyan); opacity: 0.5; }
+/* Buttons */
+.btn-gold {
+  display:inline-flex;align-items:center;gap:.55rem;
+  padding:.8rem 1.6rem;
+  background:linear-gradient(135deg,var(--gold) 0%,var(--gold-lt) 100%);
+  color:#0a0800;font-weight:700;font-size:.82rem;
+  letter-spacing:.06em;text-transform:uppercase;
+  border:none;border-radius:6px;cursor:pointer;text-decoration:none;
+  position:relative;overflow:hidden;
+  transition:transform .2s,box-shadow .2s;
+}
+.btn-gold::before {
+  content:'';position:absolute;inset:0;
+  background:rgba(255,255,255,.2);
+  transform:translateX(-100%) skewX(-15deg);
+  transition:transform .4s;
+}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 0 36px rgba(212,168,83,.45);}
+.btn-gold:hover::before{transform:translateX(150%) skewX(-15deg);}
 
-  .section-title {
-    font-size: clamp(2rem, 4vw, 3.4rem);
-    font-weight: 800; line-height: 1.1; letter-spacing: -0.03em;
-    margin-bottom: 1rem;
-  }
-  .section-sub {
-    color: #64748b; font-size: 1rem; font-weight: 300; line-height: 1.7;
-    max-width: 560px;
-  }
+.btn-outline-gold {
+  display:inline-flex;align-items:center;gap:.55rem;
+  padding:.8rem 1.6rem;
+  background:transparent;
+  color:var(--gold);font-weight:600;font-size:.82rem;
+  letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid rgba(212,168,83,.4);
+  border-radius:6px;cursor:pointer;text-decoration:none;
+  transition:all .2s;
+}
+.btn-outline-gold:hover {
+  background:rgba(212,168,83,.07);
+  border-color:var(--gold);
+  box-shadow:0 0 24px rgba(212,168,83,.18);
+  transform:translateY(-2px);
+}
 
-  /* Glass card */
-  .glass-card {
-    background: rgba(255,255,255,0.025);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 16px;
-    backdrop-filter: blur(10px);
-    transition: border-color 0.3s, box-shadow 0.3s;
-  }
-  .glass-card:hover {
-    border-color: rgba(0,245,255,0.2);
-    box-shadow: 0 0 40px rgba(0,245,255,0.06);
-  }
+/* Hero stats */
+.hero-stats { display:flex;gap:2.5rem;flex-wrap:wrap; }
+.stat-item {}
+.stat-num {
+  font-family:'Playfair Display',serif;
+  font-size:2rem;font-weight:900;
+  color:var(--gold);line-height:1;margin-bottom:.2rem;
+}
+.stat-label {
+  font-size:.68rem;font-weight:500;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--cream-dim);
+}
 
-  /* Architecture section */
-  #architecture { background: linear-gradient(180deg, var(--bg) 0%, #070a12 100%); }
+/* ── Hero right: orb ── */
+.orb-wrap {
+  position:relative;width:100%;height:400px;
+  display:flex;align-items:center;justify-content:center;
+}
+.orb-outer {
+  position:absolute;width:320px;height:320px;border-radius:50%;
+  border:1px solid rgba(212,168,83,.12);
+  animation:orb-rot 18s linear infinite;
+}
+.orb-outer:nth-child(2){
+  width:240px;height:240px;
+  border-color:rgba(124,110,249,.15);
+  animation-duration:12s;animation-direction:reverse;
+}
+.orb-outer:nth-child(3){
+  width:160px;height:160px;
+  border-color:rgba(45,212,191,.18);
+  animation-duration:7s;
+}
+@keyframes orb-rot{to{transform:rotate(360deg);}}
+.orb-planet {
+  position:absolute;width:10px;height:10px;border-radius:50%;
+  top:50%;left:0;margin-top:-5px;margin-left:-5px;
+  background:var(--gold);box-shadow:0 0 14px var(--gold);
+  transform-origin:calc(160px) 0;
+  animation:orb-rot 18s linear infinite;
+}
+.orb-planet-v {
+  position:absolute;width:7px;height:7px;border-radius:50%;
+  top:50%;left:0;margin-top:-3.5px;margin-left:-3.5px;
+  background:var(--violet-lt);box-shadow:0 0 12px var(--violet);
+  transform-origin:calc(120px) 0;
+  animation:orb-rot 12s linear infinite reverse;
+}
+.orb-core {
+  width:80px;height:80px;border-radius:50%;
+  background:radial-gradient(circle,rgba(212,168,83,.5),rgba(124,110,249,.3),transparent 70%);
+  position:absolute;
+  animation:orb-pulse 4s ease-in-out infinite;
+  box-shadow:0 0 40px rgba(212,168,83,.2),0 0 80px rgba(124,110,249,.1);
+}
+@keyframes orb-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
 
-  .arch-diagram {
-    position: relative;
-    display: grid; gap: 0;
-    max-width: 900px;
-  }
-  .arch-layer {
-    position: relative;
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px;
-    padding: 1.75rem 2rem;
-    margin-bottom: 0;
-    cursor: pointer;
-    transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
-    overflow: hidden;
-  }
-  .arch-layer::before {
-    content: ''; position: absolute; inset: 0; border-radius: 12px;
-    opacity: 0; transition: opacity 0.3s;
-  }
-  .arch-layer-1 { background: rgba(0,245,255,0.04); }
-  .arch-layer-1::before { background: linear-gradient(135deg, rgba(0,245,255,0.08), transparent); }
-  .arch-layer-1:hover::before, .arch-layer-1.active::before { opacity: 1; }
-  .arch-layer-1:hover, .arch-layer-1.active { border-color: rgba(0,245,255,0.35); box-shadow: 0 0 40px rgba(0,245,255,0.1); }
+/* Hero waveform canvas */
+#hero-wave-canvas { display:block;width:100%;height:56px;margin-top:1.5rem; }
 
-  .arch-layer-2 { background: rgba(124,58,237,0.04); }
-  .arch-layer-2::before { background: linear-gradient(135deg, rgba(124,58,237,0.08), transparent); }
-  .arch-layer-2:hover::before, .arch-layer-2.active::before { opacity: 1; }
-  .arch-layer-2:hover, .arch-layer-2.active { border-color: rgba(124,58,237,0.35); box-shadow: 0 0 40px rgba(124,58,237,0.1); }
+/* ── Section ── */
+.section-pad { padding:7rem 2.5rem;position:relative;overflow:hidden; }
+.max-w { max-width:1100px;margin:0 auto; }
 
-  .arch-layer-3 { background: rgba(0,102,255,0.04); }
-  .arch-layer-3::before { background: linear-gradient(135deg, rgba(0,102,255,0.08), transparent); }
-  .arch-layer-3:hover::before, .arch-layer-3.active::before { opacity: 1; }
-  .arch-layer-3:hover, .arch-layer-3.active { border-color: rgba(0,102,255,0.35); box-shadow: 0 0 40px rgba(0,102,255,0.1); }
+.section-eyebrow {
+  display:inline-flex;align-items:center;gap:.6rem;
+  margin-bottom:1.1rem;
+}
+.eyebrow-num {
+  font-family:'Fira Code',monospace;font-size:.65rem;
+  color:var(--gold);letter-spacing:.15em;
+}
+.eyebrow-slash { color:rgba(212,168,83,.3); }
+.eyebrow-txt {
+  font-size:.65rem;font-weight:500;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--cream-dim);
+}
 
-  .arch-connector {
-    display: flex; align-items: center; justify-content: center;
-    height: 48px; position: relative;
-  }
-  .arch-connector::before {
-    content: ''; position: absolute;
-    left: 50%; top: 0; bottom: 0; width: 1px;
-    background: linear-gradient(180deg, rgba(0,245,255,0.3), rgba(124,58,237,0.3));
-  }
-  .arch-connector-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--cyan); position: relative; z-index: 1;
-    animation: connector-pulse 2s ease-in-out infinite;
-    box-shadow: 0 0 10px var(--cyan);
-  }
-  @keyframes connector-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.5); } }
+.section-title {
+  font-size:clamp(2rem,4vw,3.5rem);
+  font-weight:900;line-height:1.05;letter-spacing:-.03em;
+  margin-bottom:.85rem;
+}
+.section-title .accent {
+  font-style:italic;
+  background:linear-gradient(135deg,var(--gold),var(--gold-lt));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.section-title .accent-v {
+  font-style:italic;
+  background:linear-gradient(135deg,var(--violet-lt),var(--teal));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.section-sub { color:var(--cream-dim);font-size:.95rem;line-height:1.75;font-weight:300;max-width:500px; }
 
-  .layer-badge {
-    display: inline-block; padding: 0.2rem 0.6rem;
-    border-radius: 4px; font-size: 0.65rem; font-weight: 700;
-    letter-spacing: 0.1em; text-transform: uppercase;
-    margin-bottom: 0.6rem;
-  }
-  .layer-badge-1 { background: rgba(0,245,255,0.15); color: var(--cyan); }
-  .layer-badge-2 { background: rgba(124,58,237,0.15); color: #a78bfa; }
-  .layer-badge-3 { background: rgba(0,102,255,0.15); color: #60a5fa; }
+/* ── Glassy card ── */
+.glass {
+  background:rgba(19,19,31,.7);
+  border:1px solid var(--border);
+  border-radius:14px;
+  backdrop-filter:blur(12px);
+  transition:border-color .3s,box-shadow .3s;
+}
+.glass:hover { border-color:rgba(212,168,83,.22);box-shadow:0 0 50px rgba(212,168,83,.05); }
+.glass-v { border-color:var(--border-v); }
+.glass-v:hover { border-color:rgba(124,110,249,.35);box-shadow:0 0 50px rgba(124,110,249,.07); }
 
-  .layer-title { font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem; }
-  .layer-sub { color: #64748b; font-size: 0.85rem; }
-  .layer-expand { overflow: hidden; max-height: 0; transition: max-height 0.5s cubic-bezier(0.23,1,0.32,1); }
-  .layer-expand.open { max-height: 300px; }
+/* ── Architecture ── */
+#architecture { background:var(--deep); }
+.arch-split { display:grid;grid-template-columns:1fr 1.15fr;gap:5rem;align-items:start; }
+@media(max-width:850px){.arch-split{grid-template-columns:1fr;}}
 
-  /* Pipeline */
-  #pipeline { background: #040710; }
+.arch-layer {
+  border-radius:12px;padding:1.75rem;cursor:pointer;
+  border:1px solid rgba(255,255,255,.05);
+  transition:all .35s cubic-bezier(.23,1,.32,1);
+  position:relative;overflow:hidden;
+  margin-bottom:.75rem;
+}
+.arch-layer::before {
+  content:'';position:absolute;inset:0;border-radius:12px;
+  opacity:0;transition:opacity .3s;
+}
+.arch-layer-1{background:rgba(212,168,83,.04);}
+.arch-layer-1::before{background:linear-gradient(135deg,rgba(212,168,83,.07),transparent);}
+.arch-layer-1:hover::before,.arch-layer-1.open::before{opacity:1;}
+.arch-layer-1:hover,.arch-layer-1.open{border-color:rgba(212,168,83,.35);box-shadow:0 0 40px rgba(212,168,83,.09);}
 
-  .pipeline-flow {
-    display: flex; flex-direction: column; gap: 0;
-    max-width: 760px; margin: 0 auto;
-  }
-  .pipe-stage {
-    display: flex; gap: 1.5rem; align-items: flex-start;
-    padding: 1.5rem 0;
-    border-left: 2px solid rgba(255,255,255,0.04);
-    padding-left: 2rem; position: relative;
-  }
-  .pipe-stage::before {
-    content: ''; position: absolute;
-    left: -6px; top: 1.75rem;
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--bg);
-    border: 2px solid var(--cyan);
-    transition: all 0.3s;
-  }
-  .pipe-stage.active::before { background: var(--cyan); box-shadow: 0 0 15px var(--cyan); }
-  .pipe-stage.active { border-color: rgba(0,245,255,0.3); }
+.arch-layer-2{background:rgba(124,110,249,.04);}
+.arch-layer-2::before{background:linear-gradient(135deg,rgba(124,110,249,.08),transparent);}
+.arch-layer-2:hover::before,.arch-layer-2.open::before{opacity:1;}
+.arch-layer-2:hover,.arch-layer-2.open{border-color:rgba(124,110,249,.35);box-shadow:0 0 40px rgba(124,110,249,.09);}
 
-  .pipe-num {
-    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em;
-    color: var(--cyan); text-transform: uppercase;
-    min-width: 60px; padding-top: 0.1rem;
-  }
-  .pipe-content { flex: 1; }
-  .pipe-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
-  .pipe-desc { color: #64748b; font-size: 0.82rem; line-height: 1.6; margin-bottom: 0.75rem; }
-  .code-block {
-    background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 8px; padding: 0.85rem 1rem;
-    font-size: 0.72rem; line-height: 1.7;
-    color: #94a3b8; overflow-x: auto;
-    position: relative;
-  }
-  .code-block .comment { color: #475569; }
-  .code-block .cmd { color: var(--cyan); }
-  .code-block .flag { color: #a78bfa; }
-  .code-block .value { color: #34d399; }
+.arch-layer-3{background:rgba(45,212,191,.04);}
+.arch-layer-3::before{background:linear-gradient(135deg,rgba(45,212,191,.07),transparent);}
+.arch-layer-3:hover::before,.arch-layer-3.open::before{opacity:1;}
+.arch-layer-3:hover,.arch-layer-3.open{border-color:rgba(45,212,191,.35);box-shadow:0 0 40px rgba(45,212,191,.08);}
 
-  /* Demo Section */
-  #demo { background: linear-gradient(180deg, #040710, #060b18); }
-  .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+.layer-tag {
+  display:inline-block;padding:.18rem .55rem;border-radius:4px;
+  font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  margin-bottom:.55rem;
+}
+.tag-gold{background:rgba(212,168,83,.15);color:var(--gold);}
+.tag-violet{background:rgba(124,110,249,.15);color:var(--violet-lt);}
+.tag-teal{background:rgba(45,212,191,.15);color:var(--teal);}
 
-  @media (max-width: 900px) { .demo-grid { grid-template-columns: 1fr; } }
+.layer-title{font-size:1.15rem;font-weight:700;margin-bottom:.3rem;font-family:'Outfit',sans-serif;}
+.layer-sub{font-size:.78rem;color:var(--cream-dim);}
+.layer-arrow{font-size:1.2rem;color:var(--cream-dim);transition:transform .3s;}
+.arch-layer.open .layer-arrow{transform:rotate(90deg);}
 
-  .demo-form .field { margin-bottom: 1.25rem; }
-  .field-label {
-    display: block; font-size: 0.7rem; font-weight: 700;
-    letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--cyan); margin-bottom: 0.5rem;
-  }
-  .field-input, .field-select, .field-textarea {
-    width: 100%; background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px; padding: 0.75rem 1rem;
-    color: var(--text); font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem; outline: none;
-    transition: border-color 0.2s;
-  }
-  .field-input:focus, .field-select:focus, .field-textarea:focus {
-    border-color: rgba(0,245,255,0.4);
-    box-shadow: 0 0 0 3px rgba(0,245,255,0.05);
-  }
-  .field-textarea { resize: none; height: 90px; }
-  .field-select option { background: #0a0f1a; }
+.layer-details {
+  overflow:hidden;max-height:0;
+  transition:max-height .5s cubic-bezier(.23,1,.32,1),padding .3s;
+}
+.layer-details.open{max-height:280px;padding-top:1rem;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;font-size:.78rem;}
+.detail-item span{display:block;font-size:.68rem;color:#4a4760;margin-bottom:.15rem;}
+.detail-item strong{color:var(--cream);}
+.detail-note{font-size:.74rem;color:var(--cream-dim);line-height:1.6;margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.05);}
 
-  .demo-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
-  @media (max-width: 600px) { .demo-controls { grid-template-columns: 1fr; } }
+/* Arch connector */
+.arch-conn {
+  display:flex;align-items:center;justify-content:center;
+  height:36px;position:relative;
+}
+.arch-conn::before{
+  content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;
+  background:linear-gradient(180deg,var(--gold-dim),var(--violet));
+}
+.conn-bead {
+  width:8px;height:8px;border-radius:50%;
+  background:var(--gold);box-shadow:0 0 10px var(--gold);
+  position:relative;z-index:1;
+  animation:bead-pulse 2.5s ease-in-out infinite;
+}
+@keyframes bead-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.8);}}
 
-  /* Pipeline animation */
-  .pipeline-anim { padding: 1.5rem; }
-  .pipe-anim-layer {
-    display: flex; align-items: center; gap: 1rem;
-    padding: 0.85rem 1rem; border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.05);
-    margin-bottom: 0.5rem; transition: all 0.3s;
-    font-size: 0.78rem;
-  }
-  .pipe-anim-layer.lit-cyan { border-color: rgba(0,245,255,0.4); background: rgba(0,245,255,0.05); box-shadow: 0 0 20px rgba(0,245,255,0.08); }
-  .pipe-anim-layer.lit-purple { border-color: rgba(124,58,237,0.4); background: rgba(124,58,237,0.05); box-shadow: 0 0 20px rgba(124,58,237,0.08); }
-  .pipe-anim-layer.lit-blue { border-color: rgba(0,102,255,0.4); background: rgba(0,102,255,0.05); box-shadow: 0 0 20px rgba(0,102,255,0.08); }
-  .layer-icon { font-size: 1.1rem; }
-  .layer-text { flex: 1; }
-  .layer-text strong { display: block; font-size: 0.8rem; }
-  .layer-text span { color: #475569; font-size: 0.7rem; font-family: 'Space Mono', monospace; }
-  .layer-status { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
-  .status-idle { color: #374151; }
-  .status-running { color: var(--cyan); animation: blink 0.8s ease-in-out infinite; }
-  .status-done { color: #34d399; }
-  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+/* Arch right panel */
+.arch-info-panel {
+  position:sticky;top:7rem;
+  padding:2rem;
+}
+.flow-token {
+  display:inline-block;padding:.25rem .6rem;border-radius:4px;
+  font-family:'Fira Code',monospace;font-size:.68rem;
+  background:rgba(212,168,83,.1);color:var(--gold);
+  border:1px solid rgba(212,168,83,.2);
+  margin:.2rem;
+}
+.flow-arrow-v{
+  display:flex;align-items:center;gap:.5rem;
+  padding:.5rem 0;color:var(--cream-dim);font-size:.78rem;
+}
+.flow-arrow-v::before{
+  content:'↓';font-size:1rem;color:var(--violet-lt);
+}
 
-  /* Waveform canvas */
-  .wave-container { position: relative; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.4); }
-  .wave-canvas { display: block; width: 100%; height: 80px; }
+/* ── Pipeline ── */
+#pipeline{background:var(--obsidian);}
+.pipeline-inner{max-width:720px;}
 
-  /* Player */
-  .player-bar {
-    display: flex; align-items: center; gap: 1rem;
-    padding: 0.75rem 1rem;
-    background: rgba(255,255,255,0.03);
-    border-top: 1px solid rgba(255,255,255,0.06);
-  }
-  .play-btn {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--cyan), var(--blue));
-    border: none; cursor: pointer; font-size: 0.9rem;
-    display: flex; align-items: center; justify-content: center;
-    transition: transform 0.2s, box-shadow 0.2s;
-    flex-shrink: 0; color: #000; font-weight: 900;
-  }
-  .play-btn:hover { transform: scale(1.1); box-shadow: 0 0 20px rgba(0,245,255,0.4); }
-  .player-info { flex: 1; min-width: 0; }
-  .player-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .player-sub { font-size: 0.68rem; color: #475569; }
-  .download-btns { display: flex; gap: 0.4rem; }
-  .dl-btn {
-    padding: 0.3rem 0.6rem; border-radius: 4px;
-    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em;
-    text-transform: uppercase; border: none; cursor: pointer;
-    text-decoration: none; display: inline-block;
-  }
-  .dl-wav { background: rgba(0,245,255,0.1); color: var(--cyan); }
-  .dl-mid { background: rgba(124,58,237,0.1); color: #a78bfa; }
+.pipe-item {
+  display:flex;gap:1.75rem;align-items:flex-start;
+  padding-bottom:2.5rem;
+  padding-left:2.25rem;
+  position:relative;
+  border-left:1px solid rgba(212,168,83,.15);
+}
+.pipe-item:last-child{border-color:transparent;}
+.pipe-item::before {
+  content:'';position:absolute;left:-6px;top:0;
+  width:11px;height:11px;border-radius:50%;
+  border:2px solid var(--gold);background:var(--obsidian);
+  transition:background .3s,box-shadow .3s;
+}
+.pipe-item.active::before{background:var(--gold);box-shadow:0 0 14px var(--gold);}
 
-  /* Gallery */
-  #gallery { background: #030508; }
-  .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+.pipe-num{
+  font-family:'Fira Code',monospace;font-size:.68rem;
+  color:var(--gold);letter-spacing:.12em;
+  padding-top:.05rem;min-width:52px;
+}
+.pipe-head{font-size:1rem;font-weight:700;margin-bottom:.35rem;font-family:'Outfit',sans-serif;}
+.pipe-desc{font-size:.82rem;color:var(--cream-dim);line-height:1.65;margin-bottom:.85rem;}
 
-  .gallery-card {
-    border-radius: 14px; overflow: hidden; cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.06);
-    transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
-    position: relative;
-  }
-  .gallery-card:hover { transform: translateY(-6px); border-color: rgba(0,245,255,0.25); box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(0,245,255,0.06); }
-  .gallery-card.active { border-color: rgba(0,245,255,0.4); }
+.code-block {
+  background:rgba(0,0,0,.55);
+  border:1px solid rgba(255,255,255,.06);
+  border-left:2px solid var(--gold-dim);
+  border-radius:8px;padding:.9rem 1.1rem;
+  font-size:.72rem;line-height:1.8;
+  overflow-x:auto;position:relative;
+}
+.c-cmd{color:var(--teal);}
+.c-flag{color:var(--violet-lt);}
+.c-val{color:var(--gold-lt);}
+.c-cmt{color:#3a3855;}
 
-  .card-visual {
-    height: 120px; position: relative; overflow: hidden;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .card-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .card-genre {
-    position: absolute; top: 0.75rem; left: 0.75rem;
-    padding: 0.2rem 0.55rem; border-radius: 4px;
-    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
-    text-transform: uppercase; z-index: 1;
-  }
-  .card-body { padding: 1.25rem; background: rgba(10,15,26,0.9); }
-  .card-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
-  .card-prompt { font-size: 0.78rem; color: #64748b; line-height: 1.5; margin-bottom: 1rem; }
+/* ── Demo ── */
+#demo { background:linear-gradient(180deg,var(--deep) 0%,var(--obsidian) 100%); }
+.demo-split { display:grid;grid-template-columns:1.05fr 1fr;gap:2.5rem;align-items:start; }
+@media(max-width:900px){.demo-split{grid-template-columns:1fr;}}
 
-  /* Limitations */
-  #limitations { background: #040710; }
-  .limit-box {
-    border: 1px solid rgba(255,165,0,0.2);
-    border-radius: 12px; padding: 2rem;
-    background: rgba(255,165,0,0.02);
-    position: relative; overflow: hidden;
-  }
-  .limit-box::before {
-    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
-    width: 3px; background: linear-gradient(180deg, #f59e0b, #ef4444);
-  }
-  .limit-title { color: #f59e0b; font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
-  .limit-text { color: #94a3b8; font-size: 0.88rem; line-height: 1.75; }
+.field-label {
+  display:block;font-size:.68rem;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:.45rem;
+}
+.field-input,.field-select,.field-textarea {
+  width:100%;background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;padding:.7rem .95rem;
+  color:var(--cream);font-family:'Outfit',sans-serif;font-size:.88rem;
+  outline:none;transition:border-color .2s,box-shadow .2s;
+}
+.field-input:focus,.field-select:focus,.field-textarea:focus {
+  border-color:rgba(212,168,83,.45);
+  box-shadow:0 0 0 3px rgba(212,168,83,.06);
+}
+.field-textarea{resize:none;height:82px;}
+.field-select option{background:#0d0d1a;}
 
-  /* Datasets */
-  .data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-  .data-table th { text-align: left; padding: 0.75rem 1rem; color: var(--cyan); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: #94a3b8; }
-  .data-table tr:last-child td { border-bottom: none; }
-  .data-table tr:hover td { background: rgba(255,255,255,0.02); color: var(--text); }
+.ctrl-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;}
+@media(max-width:500px){.ctrl-grid{grid-template-columns:1fr;}}
+.field-mb{margin-bottom:1rem;}
 
-  /* Get Started */
-  #getstarted { background: linear-gradient(180deg, #040710, var(--bg)); }
-  .start-block { position: relative; }
-  .start-block .code-block { font-size: 0.8rem; }
+/* Pipeline anim */
+.anim-layer {
+  display:flex;align-items:center;gap:.85rem;
+  padding:.85rem 1rem;border-radius:10px;
+  border:1px solid rgba(255,255,255,.05);
+  margin-bottom:.5rem;
+  transition:all .35s;font-size:.78rem;
+}
+.anim-layer.lit-gold { border-color:rgba(212,168,83,.4);background:rgba(212,168,83,.05);box-shadow:0 0 24px rgba(212,168,83,.08); }
+.anim-layer.lit-violet { border-color:rgba(124,110,249,.4);background:rgba(124,110,249,.05);box-shadow:0 0 24px rgba(124,110,249,.08); }
+.anim-layer.lit-teal { border-color:rgba(45,212,191,.4);background:rgba(45,212,191,.05);box-shadow:0 0 24px rgba(45,212,191,.07); }
 
-  /* Footer */
-  footer {
-    background: #020305;
-    border-top: 1px solid rgba(255,255,255,0.04);
-    padding: 3rem 2.5rem;
-  }
+.anim-icon{font-size:1.1rem;flex-shrink:0;}
+.anim-text{flex:1;}
+.anim-text strong{display:block;font-size:.8rem;margin-bottom:.1rem;}
+.anim-text span{color:#3a3855;font-family:'Fira Code',monospace;font-size:.68rem;}
+.anim-status{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
+.s-idle{color:#2a2840;} .s-run{color:var(--gold);animation:blink .8s ease-in-out infinite;} .s-done{color:var(--teal);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
 
-  /* Scroll reveal */
-  .reveal { opacity: 0; transform: translateY(30px); }
-  .reveal.in { opacity: 1; transform: translateY(0); transition: opacity 0.7s ease, transform 0.7s ease; }
-  .reveal-left { opacity: 0; transform: translateX(-30px); }
-  .reveal-left.in { opacity: 1; transform: translateX(0); transition: opacity 0.7s ease, transform 0.7s ease; }
+/* Player */
+.player-wrap{border-radius:12px;overflow:hidden;}
+.wave-area{background:rgba(0,0,0,.45);position:relative;}
+.wave-cvs{display:block;width:100%;height:72px;}
+.player-bar{
+  display:flex;align-items:center;gap:.9rem;
+  padding:.75rem 1rem;
+  background:rgba(13,13,26,.9);
+  border-top:1px solid rgba(255,255,255,.05);
+}
+.play-btn {
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--gold),var(--gold-lt));
+  border:none;cursor:pointer;font-size:.85rem;
+  display:flex;align-items:center;justify-content:center;
+  color:#0a0800;font-weight:900;
+  transition:transform .2s,box-shadow .2s;
+}
+.play-btn:hover{transform:scale(1.12);box-shadow:0 0 20px rgba(212,168,83,.45);}
+.player-info{flex:1;min-width:0;}
+.player-name{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.player-sub{font-size:.68rem;color:var(--cream-dim);}
+.dl-row{display:flex;gap:.35rem;}
+.dl-btn{
+  padding:.28rem .55rem;border-radius:4px;
+  font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  border:none;cursor:pointer;text-decoration:none;display:inline-block;
+}
+.dl-wav{background:rgba(212,168,83,.1);color:var(--gold);}
+.dl-mid{background:rgba(124,110,249,.1);color:var(--violet-lt);}
 
-  /* Skewed divider */
-  .skew-div {
-    height: 80px; background: inherit;
-    clip-path: polygon(0 0, 100% 40px, 100% 100%, 0 100%);
-    margin-top: -40px; position: relative; z-index: 1;
-  }
+/* HF token field */
+.hf-row{display:flex;gap:.5rem;align-items:center;margin-top:.75rem;}
+.hf-label{font-size:.65rem;color:var(--cream-dim);white-space:nowrap;}
+.hf-input{
+  flex:1;background:rgba(0,0,0,.3);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:6px;padding:.45rem .75rem;
+  color:var(--cream);font-size:.75rem;font-family:'Fira Code',monospace;
+  outline:none;
+}
+.hf-input:focus{border-color:rgba(124,110,249,.4);}
 
-  /* Noise overlay */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    opacity: 0.025;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  }
+/* Status / error messages */
+.api-status{
+  margin-top:.75rem;padding:.65rem .9rem;
+  border-radius:8px;font-size:.78rem;line-height:1.5;
+}
+.api-loading{background:rgba(212,168,83,.07);border:1px solid rgba(212,168,83,.2);color:var(--gold);}
+.api-error{background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.2);color:var(--warn);}
+.api-success{background:rgba(45,212,191,.07);border:1px solid rgba(45,212,191,.2);color:var(--teal);}
 
-  /* Prototype label */
-  .proto-label {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    padding: 0.25rem 0.65rem; border-radius: 4px;
-    background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2);
-    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; color: #f59e0b;
-  }
+.proto-pill{
+  display:inline-flex;align-items:center;gap:.35rem;
+  padding:.22rem .6rem;border-radius:4px;
+  background:rgba(249,115,22,.09);border:1px solid rgba(249,115,22,.2);
+  font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--warn);
+}
 
-  /* Glowing title underline */
-  .glow-underline {
-    display: inline-block;
-    background: linear-gradient(90deg, var(--cyan), var(--purple));
-    height: 2px; width: 100%; margin-top: 0.25rem;
-    box-shadow: 0 0 15px rgba(0,245,255,0.5);
-  }
+/* ── Gallery ── */
+#gallery{background:var(--deep);}
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem;}
 
-  /* Responsive nav */
-  @media (max-width: 640px) {
-    .nav-links { display: none; }
-    .hero-orb { display: none; }
-  }
+.g-card {
+  border-radius:14px;overflow:hidden;cursor:pointer;
+  border:1px solid rgba(255,255,255,.05);
+  transition:all .35s cubic-bezier(.23,1,.32,1);
+  position:relative;
+}
+.g-card:hover{transform:translateY(-8px);box-shadow:0 24px 60px rgba(0,0,0,.5);border-color:rgba(212,168,83,.25);}
+.g-card.active-card{border-color:rgba(212,168,83,.45);box-shadow:0 0 40px rgba(212,168,83,.1);}
 
-  /* Progress bar on code blocks */
-  .code-progress {
-    position: absolute; bottom: 0; left: 0; height: 2px;
-    background: linear-gradient(90deg, var(--cyan), var(--purple));
-    transition: width 1s linear; width: 0;
-  }
-  .code-progress.done { width: 100%; }
+.g-visual{height:110px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.g-cvs{position:absolute;inset:0;width:100%;height:100%;}
+.g-genre{
+  position:absolute;top:.6rem;left:.6rem;
+  padding:.18rem .5rem;border-radius:4px;
+  font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  z-index:1;
+}
+.g-body{padding:1.1rem;background:rgba(10,10,20,.92);}
+.g-title{font-size:.9rem;font-weight:700;margin-bottom:.25rem;}
+.g-prompt{font-size:.75rem;color:var(--cream-dim);line-height:1.55;margin-bottom:.85rem;}
+
+/* Gallery player bar */
+#gal-player{display:none;margin-top:1.75rem;}
+
+/* ── Datasets ── */
+.ds-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.ds-table th{
+  text-align:left;padding:.7rem 1rem;
+  font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--gold);border-bottom:1px solid rgba(212,168,83,.15);
+  font-weight:600;font-family:'Outfit',sans-serif;
+}
+.ds-table td{padding:.8rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--cream-dim);}
+.ds-table tr:last-child td{border-bottom:none;}
+.ds-table tr:hover td{background:rgba(212,168,83,.02);color:var(--cream);}
+
+/* ── Limitations ── */
+#limits{background:var(--obsidian);}
+.limit-box{
+  border:1px solid rgba(249,115,22,.18);
+  border-radius:12px;padding:1.75rem 2rem;
+  background:rgba(249,115,22,.03);
+  position:relative;overflow:hidden;
+}
+.limit-box::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;
+  width:3px;background:linear-gradient(180deg,var(--warn),var(--gold));
+}
+.limit-title{
+  color:var(--warn);font-size:.95rem;font-weight:700;
+  display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;
+}
+.limit-text{color:var(--cream-dim);font-size:.87rem;line-height:1.8;}
+
+/* ── Quick Start ── */
+#quickstart{background:var(--deep);}
+
+/* ── Footer ── */
+footer{
+  background:var(--obsidian);
+  border-top:1px solid var(--border);
+  padding:2.5rem;
+}
+.footer-inner{
+  max-width:1100px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:1.5rem;
+}
+.footer-wordmark{
+  font-family:'Playfair Display',serif;
+  font-size:.9rem;font-style:italic;color:var(--gold);
+}
+
+/* ── Scroll reveal ── */
+.sr{opacity:0;transform:translateY(28px);}
+.sr.in{opacity:1;transform:translateY(0);transition:opacity .75s ease,transform .75s ease;}
+.sr-l{opacity:0;transform:translateX(-28px);}
+.sr-l.in{opacity:1;transform:translateX(0);transition:opacity .75s ease,transform .75s ease;}
+
+/* ── Light leak ── */
+.light-leak {
+  position:absolute;pointer-events:none;border-radius:50%;
+  filter:blur(80px);opacity:.08;
+}
+
+@media(max-width:640px){nav .comp-badge,.nav-links{display:none;}}
 </style>
 </head>
 
-<body x-data="{ activeLayer: null, generating: false, generated: false, currentSong: null, currentAudio: null, isPlaying: false, generationStep: 0, promptText: 'upbeat pop song with piano and soft drums', selectedStyle: 'POP', selectedEmotion: 'HAPPY', selectedTempo: '120' }">
+<!-- ═══════════════════════════════════════════ BODY ═════════════════════════════════════════ -->
+<body x-data="{
+  activeLayer: null,
+  generating: false,
+  generated: false,
+  genStep: 0,
+  genAudio: null,
+  genError: '',
+  genMsg: '',
+  isPlaying: false,
+  hfToken: '',
+  promptText: 'upbeat pop song with bright piano melody and soft drum groove',
+  style: 'POP',
+  emotion: 'HAPPY',
+  tempo: '120',
+  showToken: false,
+  currentSong: null
+}">
 
-<!-- Custom Cursor -->
-<div id="cursor"></div>
-<div id="cursor-ring"></div>
+<div id="cur"></div>
+<div id="cur-ring"></div>
+<canvas id="bg-canvas"></canvas>
 
-<!-- Navigation -->
+<!-- NAV -->
 <nav>
-  <span class="nav-logo">♬ AI·MUSIC·GEN</span>
+  <span class="nav-wordmark">♩ AI·Music·Gen</span>
   <div class="nav-links">
     <a href="#architecture">Architecture</a>
     <a href="#pipeline">Pipeline</a>
-    <a href="#demo">Demo</a>
+    <a href="#demo">Live Demo</a>
     <a href="#gallery">Gallery</a>
-    <a href="#getstarted">Quick Start</a>
+    <a href="#quickstart">Quick Start</a>
   </div>
-  <div class="comp-badge">
-    🏆 Ganpat University · Winter Research 2026
-  </div>
+  <div class="comp-badge">🏆 Ganpat Winter Research · 2026</div>
 </nav>
 
-<!-- ═══════════════════ HERO ═══════════════════ -->
+<!-- ════════════════════════ HERO ════════════════════════ -->
 <section id="hero">
-  <canvas id="particle-canvas"></canvas>
+  <div class="hero-bg-glow"></div>
+  <div class="hero-bg-glow2"></div>
 
-  <div class="hero-content">
-    <div class="hero-eyebrow">
-      <div class="eyebrow-line"></div>
-      <span class="eyebrow-text">Research Prototype · Ganpat University 2026</span>
-    </div>
-
-    <h1 class="hero-title">
-      <span class="title-grad">AI-Music-Generation</span>
-      <span style="color:#fff; display:block;">Hybrid Framework</span>
-    </h1>
-    <div class="glow-underline" style="max-width:480px;"></div>
-
-    <p class="hero-desc" style="margin-top:1.5rem;">
-      A research-oriented implementation combining <strong style="color:#e2e8f0;">Transformer-based symbolic planning</strong>,
-      <strong style="color:#e2e8f0;">diffusion-based audio synthesis</strong>, and
-      <strong style="color:#e2e8f0;">preference alignment</strong> in an end-to-end pipeline for generating MIDI and audio outputs.
-    </p>
-
-    <div class="hero-btns">
-      <a href="#demo" class="btn-primary">▶ Generate Music Now</a>
-      <a href="https://github.com/711nishtha/AI-Music-Generation-Hybrid-Framework" target="_blank" class="btn-outline">⭐ View on GitHub</a>
-    </div>
-
-    <div style="display:flex; gap:2.5rem; flex-wrap:wrap;">
+  <div class="hero-inner">
+    <div class="hero-grid">
       <div>
-        <div style="font-size:1.5rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--cyan);">3</div>
-        <div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;">AI Layers</div>
+        <div class="hero-kicker">
+          <div class="kicker-dot"></div>
+          <span class="kicker-text">Research Prototype · Ganpat University 2026</span>
+        </div>
+
+        <h1 class="hero-title">
+          <em>AI-Music-</em><br>
+          Generation<br>
+          <span style="font-size:.72em;font-weight:400;font-style:italic;color:var(--cream-dim);">Hybrid Framework</span>
+        </h1>
+
+        <p class="hero-desc">
+          A research-oriented implementation combining <strong>Transformer-based symbolic planning</strong>,
+          <strong>diffusion-based audio synthesis</strong>, and <strong>preference alignment</strong> —
+          demonstrating an end-to-end pipeline for generating MIDI and audio outputs with a modular deep learning architecture.
+        </p>
+
+        <div class="hero-btns">
+          <a href="#demo" class="btn-gold">▶ Generate Music Now</a>
+          <a href="https://github.com/711nishtha/AI-Music-Generation-Hybrid-Framework" target="_blank" class="btn-outline-gold">⭐ View on GitHub</a>
+        </div>
+
+        <div class="hero-stats">
+          <div class="stat-item"><div class="stat-num">3</div><div class="stat-label">AI Layers</div></div>
+          <div class="stat-item"><div class="stat-num">~40M</div><div class="stat-label">Parameters</div></div>
+          <div class="stat-item"><div class="stat-num">512</div><div class="stat-label">REMI+ Tokens</div></div>
+          <div class="stat-item"><div class="stat-num">4</div><div class="stat-label">Sample Outputs</div></div>
+        </div>
+
+        <canvas id="hero-wave-canvas"></canvas>
       </div>
-      <div>
-        <div style="font-size:1.5rem;font-weight:800;font-family:'Syne',sans-serif;color:#a78bfa;">~40M</div>
-        <div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;">Parameters</div>
-      </div>
-      <div>
-        <div style="font-size:1.5rem;font-weight:800;font-family:'Syne',sans-serif;color:#60a5fa;">4</div>
-        <div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;">Sample Outputs</div>
-      </div>
-      <div>
-        <div style="font-size:1.5rem;font-weight:800;font-family:'Syne',sans-serif;color:#34d399;">512</div>
-        <div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:0.1em;">REMI+ Tokens</div>
+
+      <!-- Orb -->
+      <div class="hero-right">
+        <div class="orb-wrap">
+          <div class="orb-outer"><div class="orb-planet"></div></div>
+          <div class="orb-outer"><div class="orb-planet-v"></div></div>
+          <div class="orb-outer"></div>
+          <div class="orb-core"></div>
+          <!-- MIDI token floaters -->
+          <div style="position:absolute;font-family:'Fira Code',monospace;font-size:.6rem;color:rgba(212,168,83,.4);top:18%;right:10%;animation:float1 6s ease-in-out infinite;">NOTE_ON</div>
+          <div style="position:absolute;font-family:'Fira Code',monospace;font-size:.6rem;color:rgba(124,110,249,.4);bottom:22%;left:8%;animation:float1 8s ease-in-out infinite reverse;">BAR_CHANGE</div>
+          <div style="position:absolute;font-family:'Fira Code',monospace;font-size:.6rem;color:rgba(45,212,191,.4);top:60%;right:5%;animation:float1 7s ease-in-out infinite 1s;">VELOCITY</div>
+        </div>
       </div>
     </div>
-
-    <canvas id="hero-wave" width="580" height="55" style="margin-top:2.5rem; opacity:0.6; display:block;"></canvas>
-  </div>
-
-  <!-- Floating Orb -->
-  <div class="hero-orb">
-    <div class="orb-ring">
-      <div class="orb-dot"></div>
-    </div>
-    <div class="orb-ring"></div>
-    <div class="orb-ring"></div>
-    <div class="orb-core"></div>
   </div>
 </section>
 
-<!-- ═══════════════════ ARCHITECTURE ═══════════════════ -->
-<section id="architecture" class="section-pad">
-  <div style="max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 1.1fr; gap:4rem; align-items:start;">
-    <div class="reveal-left">
-      <div class="section-label">
-        <span class="label-num">01 — Architecture</span>
-        <div class="label-line"></div>
-      </div>
-      <h2 class="section-title">The Hybrid<br><span style="background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Three-Layer</span><br>Architecture</h2>
-      <p class="section-sub">
-        A modular deep learning pipeline as proposed in <em>"AI in Music Generation"</em>. Click each layer to explore the implementation details and model specs.
-      </p>
-      <div style="margin-top:2rem;">
-        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-          <div style="width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);"></div>
-          <span style="font-size:0.78rem;color:#64748b;">Symbolic Planning — Transformer-based</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-          <div style="width:10px;height:10px;border-radius:50%;background:#a78bfa;box-shadow:0 0 8px #a78bfa;"></div>
-          <span style="font-size:0.78rem;color:#64748b;">Audio Rendering — Diffusion U-Net</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:0.75rem;">
-          <div style="width:10px;height:10px;border-radius:50%;background:#60a5fa;box-shadow:0 0 8px #60a5fa;"></div>
-          <span style="font-size:0.78rem;color:#64748b;">Alignment — Direct Preference Optimisation</span>
-        </div>
-      </div>
-      <div style="margin-top:2rem;padding:1.25rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;">
-        <div style="font-size:0.65rem;color:var(--cyan);letter-spacing:0.15em;text-transform:uppercase;font-weight:700;margin-bottom:0.75rem;">Input → Output Flow</div>
-        <div style="font-family:'Space Mono',monospace;font-size:0.72rem;color:#64748b;line-height:2;">
-          Text Prompt / Emotion / Style<br>
-          <span style="color:var(--cyan);">↓ Symbolic tokens (REMI+)</span><br>
-          Multi-track MIDI<br>
-          <span style="color:#a78bfa;">↓ Mel-spectrogram diffusion</span><br>
-          Audio waveform<br>
-          <span style="color:#60a5fa;">↓ DPO alignment</span><br>
-          MIDI + WAV output
-        </div>
-      </div>
-    </div>
+<style>
+@keyframes float1{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+</style>
 
-    <!-- Interactive diagram -->
-    <div class="reveal">
-      <div class="arch-diagram">
+<!-- ════════════════════════ ARCHITECTURE ════════════════════════ -->
+<section id="architecture" class="section-pad">
+  <div class="light-leak" style="width:600px;height:600px;background:var(--gold);top:-200px;right:-100px;"></div>
+  <div class="max-w">
+    <div class="arch-split">
+      <div class="sr-l">
+        <div class="section-eyebrow">
+          <span class="eyebrow-num">01</span>
+          <span class="eyebrow-slash">/</span>
+          <span class="eyebrow-txt">Architecture</span>
+        </div>
+        <h2 class="section-title">The Hybrid<br><span class="accent">Three-Layer</span><br>Architecture</h2>
+        <p class="section-sub" style="margin-bottom:2rem;">
+          Implementation of the hybrid three-layer AI music generation framework from the paper <em>"AI in Music Generation"</em>, exactly as proposed. Click each layer to expand.
+        </p>
+
         <!-- Layer 1 -->
-        <div class="arch-layer arch-layer-1" :class="{ active: activeLayer === 1 }" @click="activeLayer = activeLayer === 1 ? null : 1">
+        <div class="arch-layer arch-layer-1" :class="{open:activeLayer===1}" @click="activeLayer=activeLayer===1?null:1">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;">
             <div>
-              <div class="layer-badge layer-badge-1">Symbolic Planning</div>
+              <div class="layer-tag tag-gold">Symbolic Planning</div>
               <div class="layer-title">Hierarchical Transformer</div>
-              <div class="layer-sub"><code style="font-size:0.7rem;">src/models/symbolic_planner.py</code></div>
+              <div class="layer-sub"><code style="font-size:.7rem;">src/models/symbolic_planner.py</code></div>
             </div>
-            <div style="font-size:1.4rem;transition:transform 0.3s;" :style="activeLayer===1 ? 'transform:rotate(90deg)' : ''">›</div>
+            <span class="layer-arrow">›</span>
           </div>
-          <div class="layer-expand" :class="{ open: activeLayer === 1 }">
-            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(0,245,255,0.1);">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;font-size:0.78rem;">
-                <div><span style="color:#475569;">Config (small)</span><br><strong>~15M params</strong></div>
-                <div><span style="color:#475569;">Config (full)</span><br><strong>~80M params</strong></div>
-                <div><span style="color:#475569;">Encoder</span><br><strong>4-layer structure</strong></div>
-                <div><span style="color:#475569;">Decoder</span><br><strong>6-layer detail</strong></div>
-              </div>
-              <div style="margin-top:0.75rem;font-size:0.75rem;color:#475569;">Cross-attention between encoder and decoder layers. Outputs REMI+ tokenised symbolic MIDI (512-token vocabulary).</div>
+          <div class="layer-details" :class="{open:activeLayer===1}">
+            <div class="detail-grid">
+              <div class="detail-item"><span>Small config</span><strong>~15M params · 1–3h GPU</strong></div>
+              <div class="detail-item"><span>Full config</span><strong>~80M params · 48–72h 8×A100</strong></div>
+              <div class="detail-item"><span>Encoder</span><strong>4-layer structure encoder</strong></div>
+              <div class="detail-item"><span>Decoder</span><strong>6-layer detail decoder</strong></div>
             </div>
+            <div class="detail-note">Cross-attention between encoder and decoder. Outputs REMI+ tokenised multi-track MIDI with 512-token vocabulary. Conditions on text prompt, style, and emotion embeddings.</div>
           </div>
         </div>
 
-        <div class="arch-connector"><div class="arch-connector-dot"></div></div>
+        <div class="arch-conn"><div class="conn-bead"></div></div>
 
         <!-- Layer 2 -->
-        <div class="arch-layer arch-layer-2" :class="{ active: activeLayer === 2 }" @click="activeLayer = activeLayer === 2 ? null : 2">
+        <div class="arch-layer arch-layer-2" :class="{open:activeLayer===2}" @click="activeLayer=activeLayer===2?null:2">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;">
             <div>
-              <div class="layer-badge layer-badge-2">Audio Rendering</div>
+              <div class="layer-tag tag-violet">Audio Rendering</div>
               <div class="layer-title">Mel-Spectrogram Diffusion U-Net</div>
-              <div class="layer-sub"><code style="font-size:0.7rem;">src/models/audio_renderer.py</code></div>
+              <div class="layer-sub"><code style="font-size:.7rem;">src/models/audio_renderer.py</code></div>
             </div>
-            <div style="font-size:1.4rem;transition:transform 0.3s;" :style="activeLayer===2 ? 'transform:rotate(90deg)' : ''">›</div>
+            <span class="layer-arrow">›</span>
           </div>
-          <div class="layer-expand" :class="{ open: activeLayer === 2 }">
-            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(124,58,237,0.15);">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;font-size:0.78rem;">
-                <div><span style="color:#475569;">Parameters</span><br><strong>~25M</strong></div>
-                <div><span style="color:#475569;">Sampling</span><br><strong>DDIM 50-step</strong></div>
-                <div><span style="color:#475569;">Training</span><br><strong>DDPM</strong></div>
-                <div><span style="color:#475569;">Vocoder</span><br><strong>Griffin-Lim</strong></div>
-              </div>
-              <div style="margin-top:0.75rem;font-size:0.75rem;color:#475569;">Cross-attention on symbolic tokens. Mel-spectrogram to WAV conversion via Griffin-Lim algorithm.</div>
+          <div class="layer-details" :class="{open:activeLayer===2}">
+            <div class="detail-grid">
+              <div class="detail-item"><span>Parameters</span><strong>~25M</strong></div>
+              <div class="detail-item"><span>Sampling</span><strong>DDIM · 50-step</strong></div>
+              <div class="detail-item"><span>Training</span><strong>DDPM</strong></div>
+              <div class="detail-item"><span>Vocoder</span><strong>Griffin-Lim</strong></div>
             </div>
+            <div class="detail-note">Cross-attention conditioned on symbolic tokens. Mel-spectrogram → WAV via Griffin-Lim algorithm. Requires FluidSynth-rendered audio pairs from Stage 1.</div>
           </div>
         </div>
 
-        <div class="arch-connector"><div class="arch-connector-dot" style="background:#a78bfa;box-shadow:0 0 10px #a78bfa;"></div></div>
+        <div class="arch-conn"><div class="conn-bead" style="background:var(--violet-lt);box-shadow:0 0 10px var(--violet);"></div></div>
 
         <!-- Layer 3 -->
-        <div class="arch-layer arch-layer-3" :class="{ active: activeLayer === 3 }" @click="activeLayer = activeLayer === 3 ? null : 3">
+        <div class="arch-layer arch-layer-3" :class="{open:activeLayer===3}" @click="activeLayer=activeLayer===3?null:3">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;">
             <div>
-              <div class="layer-badge layer-badge-3">Alignment (DPO)</div>
+              <div class="layer-tag tag-teal">Alignment (DPO)</div>
               <div class="layer-title">Direct Preference Optimisation</div>
-              <div class="layer-sub"><code style="font-size:0.7rem;">src/models/alignment.py</code></div>
+              <div class="layer-sub"><code style="font-size:.7rem;">src/models/alignment.py</code></div>
             </div>
-            <div style="font-size:1.4rem;transition:transform 0.3s;" :style="activeLayer===3 ? 'transform:rotate(90deg)' : ''">›</div>
+            <span class="layer-arrow">›</span>
           </div>
-          <div class="layer-expand" :class="{ open: activeLayer === 3 }">
-            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(0,102,255,0.15);">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;font-size:0.78rem;">
-                <div><span style="color:#475569;">KL Beta</span><br><strong>β = 0.1</strong></div>
-                <div><span style="color:#475569;">Preferences</span><br><strong>Heuristic + human</strong></div>
+          <div class="layer-details" :class="{open:activeLayer===3}">
+            <div class="detail-grid">
+              <div class="detail-item"><span>KL Penalty (β)</span><strong>0.1</strong></div>
+              <div class="detail-item"><span>Preferences</span><strong>Heuristic + human</strong></div>
+            </div>
+            <div class="detail-note">Policy vs reference model fine-tuning with synthetic heuristic preference pairs. Supports human-labelled data if available. Targets the symbolic planner output.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right info panel -->
+      <div class="sr">
+        <div class="glass arch-info-panel">
+          <div style="font-size:.65rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);margin-bottom:1.25rem;">Signal Flow</div>
+
+          <div style="text-align:center;margin-bottom:.5rem;">
+            <span class="flow-token">Text Prompt</span>
+            <span class="flow-token">Style</span>
+            <span class="flow-token">Emotion</span>
+          </div>
+
+          <div class="flow-arrow-v">Symbolic Planning (REMI+ 512-token vocabulary)</div>
+          <div style="text-align:center;margin-bottom:.5rem;">
+            <span class="flow-token">NOTE_ON</span><span class="flow-token">BAR_CHANGE</span><br>
+            <span class="flow-token">VELOCITY</span><span class="flow-token">TEMPO</span>
+          </div>
+
+          <div class="flow-arrow-v">Audio Rendering (Mel-spectrogram diffusion)</div>
+          <div style="text-align:center;margin-bottom:.5rem;">
+            <span class="flow-token" style="background:rgba(124,110,249,.1);color:var(--violet-lt);border-color:rgba(124,110,249,.2);">Mel-Spectrogram</span>
+            <span class="flow-token" style="background:rgba(124,110,249,.1);color:var(--violet-lt);border-color:rgba(124,110,249,.2);">Griffin-Lim WAV</span>
+          </div>
+
+          <div class="flow-arrow-v">DPO Alignment (β = 0.1 KL penalty)</div>
+          <div style="text-align:center;">
+            <span class="flow-token" style="background:rgba(45,212,191,.1);color:var(--teal);border-color:rgba(45,212,191,.2);">MIDI Output</span>
+            <span class="flow-token" style="background:rgba(45,212,191,.1);color:var(--teal);border-color:rgba(45,212,191,.2);">WAV Output</span>
+          </div>
+
+          <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,.05);">
+            <div style="font-size:.65rem;color:var(--cream-dim);letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:.85rem;">Architecture Table</div>
+            <div style="font-size:.78rem;">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem .75rem;font-size:.72rem;">
+                <div style="color:var(--gold);font-weight:700;">Layer</div>
+                <div style="color:var(--gold);font-weight:700;">Component</div>
+                <div style="color:var(--gold);font-weight:700;">File</div>
+                <div style="color:var(--cream-dim);">Symbolic</div>
+                <div style="color:var(--cream-dim);">Hier. Transformer</div>
+                <div style="color:var(--cream-dim);font-family:'Fira Code',monospace;font-size:.65rem;">symbolic_planner.py</div>
+                <div style="color:var(--cream-dim);">Rendering</div>
+                <div style="color:var(--cream-dim);">Diffusion U-Net</div>
+                <div style="color:var(--cream-dim);font-family:'Fira Code',monospace;font-size:.65rem;">audio_renderer.py</div>
+                <div style="color:var(--cream-dim);">Alignment</div>
+                <div style="color:var(--cream-dim);">DPO</div>
+                <div style="color:var(--cream-dim);font-family:'Fira Code',monospace;font-size:.65rem;">alignment.py</div>
               </div>
-              <div style="margin-top:0.75rem;font-size:0.75rem;color:#475569;">Policy vs reference model training. Fine-tunes symbolic model with synthetic heuristic preference pairs or human-labelled data.</div>
             </div>
           </div>
         </div>
@@ -780,82 +876,72 @@
   </div>
 </section>
 
-<!-- ═══════════════════ PIPELINE ═══════════════════ -->
+<!-- ════════════════════════ PIPELINE ════════════════════════ -->
 <section id="pipeline" class="section-pad">
-  <div style="max-width:960px;margin:0 auto;">
-    <div class="reveal" style="margin-bottom:3.5rem;">
-      <div class="section-label">
-        <span class="label-num">02 — Pipeline</span>
-        <div class="label-line"></div>
+  <div class="max-w">
+    <div class="sr" style="margin-bottom:3.5rem;">
+      <div class="section-eyebrow">
+        <span class="eyebrow-num">02</span><span class="eyebrow-slash">/</span>
+        <span class="eyebrow-txt">Pipeline</span>
       </div>
-      <h2 class="section-title">End-to-End<br><span style="background:linear-gradient(135deg,#60a5fa,var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Training Pipeline</span></h2>
-      <p class="section-sub">5 stages from raw data to generated music. Small configs enable single-GPU prototyping; full configs scale to 8×A100.</p>
+      <h2 class="section-title">End-to-End<br><span class="accent-v">Training Pipeline</span></h2>
+      <p class="section-sub">Five stages from raw data to generated music. Small configs for single-GPU prototyping; full configs scale to 8×A100.</p>
     </div>
 
-    <div class="pipeline-flow">
-      <!-- Stage 1 -->
-      <div class="pipe-stage reveal active">
-        <span class="pipe-num">Stage 01</span>
-        <div class="pipe-content">
-          <div class="pipe-title">Data Preparation</div>
-          <div class="pipe-desc">Downloads POP909 (909 files), Lakh MIDI (~17k), MAESTRO v3 (~200h piano). Tokenises with REMI+ 512-token vocabulary. Renders MIDI to WAV via FluidSynth. Generates synthetic preference pairs.</div>
-          <div class="code-block">
-            <div><span class="cmd">bash</span> 01_prepare_data.sh</div>
-          </div>
+    <div class="pipeline-inner">
+      <div class="pipe-item sr active" style="transition-delay:0s;">
+        <span class="pipe-num">01</span>
+        <div>
+          <div class="pipe-head">Data Preparation</div>
+          <div class="pipe-desc">Downloads POP909, Lakh MIDI, MAESTRO v3. Tokenises with REMI+ vocabulary (512 tokens). Renders MIDI to WAV via FluidSynth. Generates synthetic preference pairs.</div>
+          <div class="code-block"><span class="c-cmt"># Download + preprocess all datasets</span><br><span class="c-cmd">bash</span> 01_prepare_data.sh</div>
         </div>
       </div>
 
-      <!-- Stage 2 -->
-      <div class="pipe-stage reveal" style="transition-delay:0.1s;">
-        <span class="pipe-num">Stage 02</span>
-        <div class="pipe-content">
-          <div class="pipe-title">Symbolic Model Training</div>
+      <div class="pipe-item sr" style="transition-delay:.08s;">
+        <span class="pipe-num">02</span>
+        <div>
+          <div class="pipe-head">Symbolic Model Training</div>
           <div class="pipe-desc">Trains the Hierarchical Music Transformer from random initialisation. Small config: ~15M params, 1–3h single GPU. Full config: ~80M params, 48–72h 8×A100.</div>
           <div class="code-block">
-            <div><span class="cmd">python</span> 02_train_symbolic.py <span class="flag">--config</span> <span class="value">config/symbolic_small.yaml</span></div>
-            <div class="comment"># Full: torchrun --nproc_per_node=8 02_train_symbolic.py --config config/symbolic_full.yaml</div>
+            <span class="c-cmd">python</span> 02_train_symbolic.py <span class="c-flag">--config</span> <span class="c-val">config/symbolic_small.yaml</span><br>
+            <span class="c-cmt"># Full: torchrun --nproc_per_node=8 02_train_symbolic.py --config config/symbolic_full.yaml</span>
           </div>
         </div>
       </div>
 
-      <!-- Stage 3 -->
-      <div class="pipe-stage reveal" style="transition-delay:0.15s;">
-        <span class="pipe-num">Stage 03</span>
-        <div class="pipe-content">
-          <div class="pipe-title">Audio Renderer Training</div>
+      <div class="pipe-item sr" style="transition-delay:.16s;">
+        <span class="pipe-num">03</span>
+        <div>
+          <div class="pipe-head">Audio Renderer Training</div>
           <div class="pipe-desc">Trains the Mel-Spectrogram Diffusion U-Net conditioned on symbolic tokens. Requires FluidSynth-rendered audio pairs from Stage 1. ~25M parameters.</div>
+          <div class="code-block"><span class="c-cmd">python</span> 03_train_renderer.py <span class="c-flag">--config</span> <span class="c-val">config/renderer_small.yaml</span></div>
+        </div>
+      </div>
+
+      <div class="pipe-item sr" style="transition-delay:.24s;">
+        <span class="pipe-num">04</span>
+        <div>
+          <div class="pipe-head">DPO Preference Alignment</div>
+          <div class="pipe-desc">Fine-tunes the symbolic model with Direct Preference Optimisation using heuristic-scored synthetic preference pairs (or human-labelled data). Beta = 0.1 KL penalty.</div>
           <div class="code-block">
-            <div><span class="cmd">python</span> 03_train_renderer.py <span class="flag">--config</span> <span class="value">config/renderer_small.yaml</span></div>
+            <span class="c-cmd">python</span> 04_preference_alignment.py \<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--symbolic_ckpt</span> <span class="c-val">checkpoints/symbolic/latest.pt</span> \<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--pref_data</span> &nbsp;&nbsp;<span class="c-val">data/subsets/preference_data.json</span>
           </div>
         </div>
       </div>
 
-      <!-- Stage 4 -->
-      <div class="pipe-stage reveal" style="transition-delay:0.2s;">
-        <span class="pipe-num">Stage 04</span>
-        <div class="pipe-content">
-          <div class="pipe-title">DPO Alignment</div>
-          <div class="pipe-desc">Fine-tunes the symbolic model with Direct Preference Optimisation using heuristic-scored synthetic preference pairs (or human-labelled data if available). Beta = 0.1 KL penalty.</div>
+      <div class="pipe-item sr" style="transition-delay:.32s;">
+        <span class="pipe-num">05</span>
+        <div>
+          <div class="pipe-head">Song Generation</div>
+          <div class="pipe-desc">Generates MIDI + WAV from text prompt, style, emotion, and tempo. Nucleus sampling, temperature control, optional neural render bypass.</div>
           <div class="code-block">
-            <div><span class="cmd">python</span> 04_preference_alignment.py \</div>
-            <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--symbolic_ckpt</span> <span class="value">checkpoints/symbolic/latest.pt</span> \</div>
-            <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--pref_data</span> &nbsp;&nbsp;<span class="value">data/subsets/preference_data.json</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Stage 5 -->
-      <div class="pipe-stage reveal" style="transition-delay:0.25s;">
-        <span class="pipe-num">Stage 05</span>
-        <div class="pipe-content">
-          <div class="pipe-title">Song Generation</div>
-          <div class="pipe-desc">Generates MIDI + WAV using text prompt, style, emotion, and tempo. Supports nucleus sampling, temperature, and optional neural render bypass.</div>
-          <div class="code-block">
-            <div><span class="cmd">python</span> 05_generate_song.py \</div>
-            <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--prompt</span> &nbsp;&nbsp;&nbsp;<span class="value">"epic orchestral battle theme with brass and percussion"</span> \</div>
-            <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--style</span> &nbsp;&nbsp;&nbsp;&nbsp;<span class="value">CLASSICAL</span> <span class="flag">--emotion</span> <span class="value">TENSE</span> <span class="flag">--tempo</span> <span class="value">140</span></div>
-            <div class="comment"># Styles: POP | CLASSICAL | JAZZ | FOLK | ELECTRONIC | AMBIENT</div>
-            <div class="comment"># Emotions: HAPPY | SAD | TENSE | PEACEFUL</div>
+            <span class="c-cmd">python</span> 05_generate_song.py \<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--prompt</span> &nbsp;&nbsp;<span class="c-val">"epic orchestral battle theme with brass and percussion"</span> \<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--style</span> &nbsp;&nbsp;&nbsp;<span class="c-val">CLASSICAL</span> <span class="c-flag">--emotion</span> <span class="c-val">TENSE</span> <span class="c-flag">--tempo</span> <span class="c-val">140</span><br>
+            <span class="c-cmt"># --temperature 0.8  --top_p 0.85  --skip_neural_render</span>
           </div>
         </div>
       </div>
@@ -863,35 +949,39 @@
   </div>
 </section>
 
-<!-- ═══════════════════ LIVE DEMO ═══════════════════ -->
-<section id="demo" class="section-pad" style="background:linear-gradient(180deg,#040710,#060b18);">
-  <div style="max-width:1100px;margin:0 auto;">
-    <div class="reveal" style="margin-bottom:3rem;">
-      <div class="section-label">
-        <span class="label-num">03 — Live Demo</span>
-        <div class="label-line"></div>
+<!-- ════════════════════════ LIVE DEMO ════════════════════════ -->
+<section id="demo" class="section-pad">
+  <div class="light-leak" style="width:500px;height:500px;background:var(--violet);top:-100px;left:-150px;"></div>
+  <div class="max-w">
+    <div class="sr" style="margin-bottom:2.75rem;">
+      <div class="section-eyebrow">
+        <span class="eyebrow-num">03</span><span class="eyebrow-slash">/</span>
+        <span class="eyebrow-txt">Live Demo</span>
       </div>
-      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
-        <h2 class="section-title" style="margin-bottom:0;">Live Prototype<br><span style="background:linear-gradient(135deg,var(--magenta),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Demo</span></h2>
-        <div class="proto-label">⚠ Prototype-scale generation (small models)</div>
+      <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+        <h2 class="section-title" style="margin-bottom:0;">Live Prototype<br><span class="accent">Demo</span></h2>
+        <div class="proto-pill">⚠ Prototype scale</div>
       </div>
-      <p class="section-sub" style="margin-top:1rem;">Enter a prompt and parameters. Watch all three AI layers activate in real-time, then listen to the generated output.</p>
+      <p class="section-sub" style="margin-top:.75rem;">
+        Generates brand-new audio from your prompt via the Hugging Face MusicGen inference API (<code style="font-size:.8em;">facebook/musicgen-small</code>).
+        No server needed — runs entirely in your browser.
+      </p>
     </div>
 
-    <div class="demo-grid">
-      <!-- Form -->
-      <div class="glass-card" style="padding:2rem;" x-data>
-        <div style="font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--cyan);margin-bottom:1.5rem;">Generation Parameters</div>
+    <div class="demo-split">
+      <!-- Left: form -->
+      <div class="glass" style="padding:2rem;">
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem;">Generation Parameters</div>
 
-        <div class="field">
+        <div class="field-mb">
           <label class="field-label">Prompt</label>
-          <textarea class="field-textarea" x-model="promptText" placeholder="e.g. upbeat pop song with piano and soft drums"></textarea>
+          <textarea class="field-textarea" x-model="promptText" placeholder="e.g. upbeat pop song with bright piano melody and soft drum groove"></textarea>
         </div>
 
-        <div class="demo-controls">
-          <div class="field">
+        <div class="ctrl-grid" style="margin-bottom:1rem;">
+          <div>
             <label class="field-label">Style</label>
-            <select class="field-select" x-model="selectedStyle">
+            <select class="field-select" x-model="style">
               <option value="POP">POP</option>
               <option value="CLASSICAL">CLASSICAL</option>
               <option value="JAZZ">JAZZ</option>
@@ -900,18 +990,18 @@
               <option value="AMBIENT">AMBIENT</option>
             </select>
           </div>
-          <div class="field">
+          <div>
             <label class="field-label">Emotion</label>
-            <select class="field-select" x-model="selectedEmotion">
+            <select class="field-select" x-model="emotion">
               <option value="HAPPY">HAPPY</option>
               <option value="SAD">SAD</option>
               <option value="TENSE">TENSE</option>
               <option value="PEACEFUL">PEACEFUL</option>
             </select>
           </div>
-          <div class="field">
-            <label class="field-label">Tempo (BPM)</label>
-            <select class="field-select" x-model="selectedTempo">
+          <div>
+            <label class="field-label">Tempo BPM</label>
+            <select class="field-select" x-model="tempo">
               <option value="80">80</option>
               <option value="100">100</option>
               <option value="120">120</option>
@@ -921,82 +1011,101 @@
           </div>
         </div>
 
-        <button class="btn-primary" style="width:100%;justify-content:center;margin-top:0.5rem;"
-          @click="startGeneration($data)"
-          :disabled="generating"
-          :style="generating ? 'opacity:0.7;cursor:not-allowed' : ''">
-          <span x-text="generating ? '⬤ Generating...' : '▶ Generate Song'"></span>
-        </button>
+        <!-- HF Token -->
+        <div style="padding:.85rem 1rem;background:rgba(124,110,249,.05);border:1px solid rgba(124,110,249,.15);border-radius:8px;margin-bottom:1.1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" @click="showToken=!showToken">
+            <span style="font-size:.72rem;color:var(--violet-lt);font-weight:600;">🔑 Hugging Face API Token <span style="font-weight:300;color:var(--cream-dim);">(free · optional for better quality)</span></span>
+            <span style="color:var(--violet-lt);font-size:.85rem;" x-text="showToken?'▲':'▼'"></span>
+          </div>
+          <div x-show="showToken" x-transition style="margin-top:.75rem;">
+            <input class="hf-input" type="password" x-model="hfToken" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+            <div style="font-size:.66rem;color:#3a3855;margin-top:.4rem;">Get a free token at <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--violet-lt);">huggingface.co/settings/tokens</a>. Without token: rate-limited but functional.</div>
+          </div>
+        </div>
 
         <!-- Command preview -->
-        <div style="margin-top:1.25rem;" x-show="promptText">
-          <div style="font-size:0.65rem;color:var(--cyan);letter-spacing:0.12em;text-transform:uppercase;font-weight:700;margin-bottom:0.5rem;">Command Preview</div>
-          <div class="code-block" style="font-size:0.68rem;">
-            <div><span class="cmd">python</span> 05_generate_song.py \</div>
-            <div>&nbsp;&nbsp;<span class="flag">--prompt</span> "<span class="value" x-text="promptText"></span>" \</div>
-            <div>&nbsp;&nbsp;<span class="flag">--style</span> <span class="value" x-text="selectedStyle"></span> <span class="flag">--emotion</span> <span class="value" x-text="selectedEmotion"></span> \</div>
-            <div>&nbsp;&nbsp;<span class="flag">--tempo</span> <span class="value" x-text="selectedTempo"></span> <span class="flag">--bars_per_section</span> <span class="value">16</span></div>
+        <div style="margin-bottom:1.25rem;">
+          <div style="font-size:.62rem;color:var(--cream-dim);letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:.45rem;">Command Preview</div>
+          <div class="code-block" style="font-size:.68rem;">
+            <span class="c-cmd">python</span> 05_generate_song.py \<br>
+            &nbsp;&nbsp;<span class="c-flag">--prompt</span> "<span class="c-val" x-text="promptText"></span>" \<br>
+            &nbsp;&nbsp;<span class="c-flag">--style</span> <span class="c-val" x-text="style"></span> <span class="c-flag">--emotion</span> <span class="c-val" x-text="emotion"></span> <span class="c-flag">--tempo</span> <span class="c-val" x-text="tempo"></span>
           </div>
         </div>
+
+        <button class="btn-gold" style="width:100%;justify-content:center;font-size:.9rem;padding:.9rem;"
+          @click="runGeneration($data)"
+          :disabled="generating"
+          :style="generating?'opacity:.65;cursor:not-allowed':''">
+          <span x-text="generating ? '⬤  Generating...' : '▶  Generate Music'"></span>
+        </button>
+
+        <!-- Status messages -->
+        <div x-show="genMsg && !genError" class="api-status api-loading" x-text="genMsg" x-transition></div>
+        <div x-show="genError" class="api-status api-error" x-text="genError" x-transition></div>
       </div>
 
-      <!-- Pipeline animation + Player -->
+      <!-- Right: pipeline anim + player -->
       <div>
-        <div class="glass-card" style="padding:1.5rem;margin-bottom:1.5rem;">
-          <div style="font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#475569;margin-bottom:1rem;">Pipeline Status</div>
+        <div class="glass" style="padding:1.5rem;margin-bottom:1.5rem;">
+          <div style="font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:1rem;">Pipeline Status</div>
 
-          <!-- Layer 1 -->
-          <div class="pipe-anim-layer" :class="generationStep >= 1 ? 'lit-cyan' : ''">
-            <span class="layer-icon">🧠</span>
-            <div class="layer-text">
+          <div class="anim-layer" :class="genStep>=1?'lit-gold':''">
+            <span class="anim-icon">🧠</span>
+            <div class="anim-text">
               <strong>Symbolic Planning Layer</strong>
-              <span x-text="generationStep >= 1 ? 'python 02_train_symbolic.py → MIDI tokens' : 'Hierarchical Transformer · REMI+ 512 tokens'"></span>
+              <span x-text="genStep>=1?'02_train_symbolic.py → REMI+ token sequence':'Hierarchical Transformer · 512-token vocab'"></span>
             </div>
-            <span class="layer-status" :class="generationStep===1?'status-running':generationStep>1?'status-done':'status-idle'" x-text="generationStep===1?'RUNNING':generationStep>1?'✓ DONE':'IDLE'"></span>
+            <span class="anim-status" :class="genStep===1?'s-run':genStep>1?'s-done':'s-idle'" x-text="genStep===1?'RUNNING':genStep>1?'✓ DONE':'IDLE'"></span>
           </div>
 
-          <!-- Layer 2 -->
-          <div class="pipe-anim-layer" :class="generationStep >= 2 ? 'lit-purple' : ''">
-            <span class="layer-icon">🌊</span>
-            <div class="layer-text">
+          <div class="anim-layer" :class="genStep>=2?'lit-violet':''">
+            <span class="anim-icon">🌊</span>
+            <div class="anim-text">
               <strong>Audio Rendering Layer</strong>
-              <span x-text="generationStep >= 2 ? 'python 03_train_renderer.py → Mel → WAV' : 'Diffusion U-Net · DDIM 50-step sampling'"></span>
+              <span x-text="genStep>=2?'03_train_renderer.py → Mel → WAV':'Diffusion U-Net · DDIM 50-step'"></span>
             </div>
-            <span class="layer-status" :class="generationStep===2?'status-running':generationStep>2?'status-done':'status-idle'" x-text="generationStep===2?'RUNNING':generationStep>2?'✓ DONE':'IDLE'"></span>
+            <span class="anim-status" :class="genStep===2?'s-run':genStep>2?'s-done':'s-idle'" x-text="genStep===2?'RUNNING':genStep>2?'✓ DONE':'IDLE'"></span>
           </div>
 
-          <!-- Layer 3 -->
-          <div class="pipe-anim-layer" :class="generationStep >= 3 ? 'lit-blue' : ''">
-            <span class="layer-icon">⚖️</span>
-            <div class="layer-text">
+          <div class="anim-layer" :class="genStep>=3?'lit-teal':''">
+            <span class="anim-icon">⚖️</span>
+            <div class="anim-text">
               <strong>Alignment Layer (DPO)</strong>
-              <span x-text="generationStep >= 3 ? 'python 04_preference_alignment.py → refined output' : 'Direct Preference Optimisation · β=0.1'"></span>
+              <span x-text="genStep>=3?'04_preference_alignment.py → refined output':'DPO · β=0.1 KL penalty'"></span>
             </div>
-            <span class="layer-status" :class="generationStep===3?'status-running':generationStep>3?'status-done':'status-idle'" x-text="generationStep===3?'RUNNING':generationStep>3?'✓ DONE':'IDLE'"></span>
+            <span class="anim-status" :class="genStep===3?'s-run':genStep>3?'s-done':'s-idle'" x-text="genStep===3?'RUNNING':genStep>3?'✓ DONE':'IDLE'"></span>
+          </div>
+
+          <div class="anim-layer" :class="genStep>=4?'lit-gold':''">
+            <span class="anim-icon">🎵</span>
+            <div class="anim-text">
+              <strong>MusicGen API Call</strong>
+              <span x-text="genStep>=4?'facebook/musicgen-small → audio blob':'HF Inference API · facebook/musicgen-small'"></span>
+            </div>
+            <span class="anim-status" :class="genStep===4?'s-run':genStep>4?'s-done':'s-idle'" x-text="genStep===4?'CALLING':genStep>4?'✓ DONE':'IDLE'"></span>
           </div>
         </div>
 
-        <!-- Player (visible after generation) -->
-        <div class="glass-card" x-show="generated" style="overflow:hidden;" x-transition>
-          <div class="wave-container">
-            <canvas class="wave-canvas" id="demo-wave-canvas"></canvas>
+        <!-- Player -->
+        <div class="player-wrap glass" x-show="generated" x-transition>
+          <div class="wave-area">
+            <canvas class="wave-cvs" id="demo-wave" height="72"></canvas>
           </div>
           <div class="player-bar">
-            <button class="play-btn" id="demo-play-btn" @click="togglePlay($data)">
+            <button class="play-btn" id="demo-play-btn" @click="toggleDemoPlay($data)">
               <span x-text="isPlaying ? '❚❚' : '▶'"></span>
             </button>
             <div class="player-info">
-              <div class="player-name" x-text="currentSong ? currentSong.name : ''"></div>
-              <div class="player-sub" x-text="currentSong ? currentSong.prompt : ''"></div>
+              <div class="player-name" x-text="'Generated: '+style+' · '+emotion+' · '+tempo+' BPM'"></div>
+              <div class="player-sub">Powered by facebook/musicgen-small · Prototype-scale</div>
             </div>
-            <div class="download-btns">
-              <a :href="currentSong ? 'outputs/'+currentSong.id+'.wav' : '#'" class="dl-btn dl-wav" download>WAV</a>
-              <a :href="currentSong ? 'outputs/'+currentSong.id+'.mid' : '#'" class="dl-btn dl-mid" download>MIDI</a>
+            <div class="dl-row">
+              <a id="demo-dl-wav" href="#" class="dl-btn dl-wav" download="generated.wav">WAV</a>
             </div>
           </div>
-          <div style="padding:0.75rem 1rem;background:rgba(245,158,11,0.04);border-top:1px solid rgba(245,158,11,0.1);display:flex;align-items:center;gap:0.5rem;">
-            <span style="color:#f59e0b;font-size:0.75rem;">⚠</span>
-            <span style="font-size:0.7rem;color:#92400e;">Prototype-scale generation (small models). See Limitations section.</span>
+          <div style="padding:.6rem 1rem;background:rgba(45,212,191,.04);border-top:1px solid rgba(45,212,191,.1);font-size:.68rem;color:rgba(45,212,191,.7);">
+            ✓ Live generation via Hugging Face MusicGen inference API — not a cached file
           </div>
         </div>
       </div>
@@ -1004,81 +1113,77 @@
   </div>
 </section>
 
-<!-- ═══════════════════ GALLERY ═══════════════════ -->
+<!-- ════════════════════════ GALLERY ════════════════════════ -->
 <section id="gallery" class="section-pad">
-  <div style="max-width:1100px;margin:0 auto;">
-    <div class="reveal" style="margin-bottom:3rem;">
-      <div class="section-label">
-        <span class="label-num">04 — Sample Outputs</span>
-        <div class="label-line"></div>
+  <div class="max-w">
+    <div class="sr" style="margin-bottom:3rem;">
+      <div class="section-eyebrow">
+        <span class="eyebrow-num">04</span><span class="eyebrow-slash">/</span>
+        <span class="eyebrow-txt">Sample Outputs</span>
       </div>
-      <h2 class="section-title">Generated<br><span style="background:linear-gradient(135deg,#34d399,var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Audio Gallery</span></h2>
-      <p class="section-sub">Four prototype-scale outputs demonstrating cross-genre generation capabilities. Click any card to play.</p>
+      <h2 class="section-title">Repository<br><span class="accent-v">Audio Gallery</span></h2>
+      <p class="section-sub">Four prototype-scale outputs from <code style="font-size:.85em;">./outputs/</code> demonstrating cross-genre generation. Click to play the real .wav files.</p>
     </div>
 
     <div class="gallery-grid">
-      <!-- Card 1 -->
-      <div class="gallery-card reveal" data-song="song_01_pop_happy" style="transition-delay:0s;">
-        <div class="card-visual" style="background:linear-gradient(135deg,rgba(0,245,255,0.1),rgba(0,102,255,0.1));">
-          <canvas class="card-canvas" id="card-canvas-1"></canvas>
-          <div class="card-genre" style="background:rgba(0,245,255,0.15);color:var(--cyan);">POP · HAPPY</div>
+      <div class="g-card sr" data-sid="song_01_pop_happy" style="transition-delay:0s;" onclick="playGallery('song_01_pop_happy','Pop · Happy','Upbeat pop with bright piano and catchy drum groove',1,'#d4a853','#f0c96a')">
+        <div class="g-visual" style="background:linear-gradient(135deg,rgba(212,168,83,.15),rgba(240,201,106,.06));">
+          <canvas class="g-cvs" id="g-cvs-1"></canvas>
+          <div class="g-genre" style="background:rgba(212,168,83,.15);color:var(--gold);">POP · HAPPY</div>
         </div>
-        <div class="card-body">
-          <div class="card-title">Song 01 — Pop Happy</div>
-          <div class="card-prompt">"Upbeat pop with bright piano, catchy melody, and light percussion. Energetic and cheerful."</div>
-          <div style="display:flex;gap:0.5rem;align-items:center;">
-            <button class="play-btn" style="width:28px;height:28px;font-size:0.7rem;" onclick="playGalleryCard('song_01_pop_happy','Pop Happy','Upbeat pop with bright piano', 1)">▶</button>
-            <a href="outputs/song_01_pop_happy.wav" class="dl-btn dl-wav" download>WAV</a>
-            <a href="outputs/song_01_pop_happy.mid" class="dl-btn dl-mid" download>MIDI</a>
+        <div class="g-body">
+          <div class="g-title">Song 01 — Pop Happy</div>
+          <div class="g-prompt">"Upbeat pop with bright piano melody, catchy hooks, and light percussion. Energetic and cheerful."</div>
+          <div style="display:flex;gap:.4rem;align-items:center;">
+            <button class="play-btn" style="width:26px;height:26px;font-size:.7rem;">▶</button>
+            <a href="outputs/song_01_pop_happy.wav" class="dl-btn dl-wav" download onclick="e=>e.stopPropagation()">WAV</a>
+            <a href="outputs/song_01_pop_happy.mid" class="dl-btn dl-mid" download onclick="e=>e.stopPropagation()">MIDI</a>
           </div>
         </div>
       </div>
 
-      <!-- Card 2 -->
-      <div class="gallery-card reveal" data-song="song_02_classical_sad" style="transition-delay:0.08s;">
-        <div class="card-visual" style="background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(0,102,255,0.1));">
-          <canvas class="card-canvas" id="card-canvas-2"></canvas>
-          <div class="card-genre" style="background:rgba(124,58,237,0.15);color:#a78bfa;">CLASSICAL · SAD</div>
+      <div class="g-card sr" data-sid="song_02_classical_sad" style="transition-delay:.07s;" onclick="playGallery('song_02_classical_sad','Classical · Sad','Melancholic solo piano with slow tempo and minor key',2,'#7c6ef9','#a99eff')">
+        <div class="g-visual" style="background:linear-gradient(135deg,rgba(124,110,249,.15),rgba(169,158,255,.05));">
+          <canvas class="g-cvs" id="g-cvs-2"></canvas>
+          <div class="g-genre" style="background:rgba(124,110,249,.15);color:var(--violet-lt);">CLASSICAL · SAD</div>
         </div>
-        <div class="card-body">
-          <div class="card-title">Song 02 — Classical Sad</div>
-          <div class="card-prompt">"Melancholic solo piano piece with slow tempo, minor key, and expressive dynamics."</div>
-          <div style="display:flex;gap:0.5rem;align-items:center;">
-            <button class="play-btn" style="width:28px;height:28px;font-size:0.7rem;" onclick="playGalleryCard('song_02_classical_sad','Classical Sad','Melancholic solo piano piece', 2)">▶</button>
+        <div class="g-body">
+          <div class="g-title">Song 02 — Classical Sad</div>
+          <div class="g-prompt">"Melancholic solo piano piece with slow tempo, minor key, and expressive dynamics."</div>
+          <div style="display:flex;gap:.4rem;align-items:center;">
+            <button class="play-btn" style="width:26px;height:26px;font-size:.7rem;background:linear-gradient(135deg,var(--violet),var(--violet-lt));">▶</button>
             <a href="outputs/song_02_classical_sad.wav" class="dl-btn dl-wav" download>WAV</a>
             <a href="outputs/song_02_classical_sad.mid" class="dl-btn dl-mid" download>MIDI</a>
           </div>
         </div>
       </div>
 
-      <!-- Card 3 -->
-      <div class="gallery-card reveal" data-song="song_03_ambient_peaceful" style="transition-delay:0.16s;">
-        <div class="card-visual" style="background:linear-gradient(135deg,rgba(52,211,153,0.1),rgba(0,245,255,0.05));">
-          <canvas class="card-canvas" id="card-canvas-3"></canvas>
-          <div class="card-genre" style="background:rgba(52,211,153,0.15);color:#34d399;">AMBIENT · PEACEFUL</div>
+      <div class="g-card sr" data-sid="song_03_ambient_peaceful" style="transition-delay:.14s;" onclick="playGallery('song_03_ambient_peaceful','Ambient · Peaceful','Soft ambient textures with gentle pad layers',3,'#2dd4bf','#67e8f9')">
+        <div class="g-visual" style="background:linear-gradient(135deg,rgba(45,212,191,.12),rgba(103,232,249,.05));">
+          <canvas class="g-cvs" id="g-cvs-3"></canvas>
+          <div class="g-genre" style="background:rgba(45,212,191,.15);color:var(--teal);">AMBIENT · PEACEFUL</div>
         </div>
-        <div class="card-body">
-          <div class="card-title">Song 03 — Ambient Peaceful</div>
-          <div class="card-prompt">"Soft ambient textures with gentle pad layers, slow evolving harmonics, and no percussion."</div>
-          <div style="display:flex;gap:0.5rem;align-items:center;">
-            <button class="play-btn" style="width:28px;height:28px;font-size:0.7rem;" onclick="playGalleryCard('song_03_ambient_peaceful','Ambient Peaceful','Soft ambient textures', 3)">▶</button>
+        <div class="g-body">
+          <div class="g-title">Song 03 — Ambient Peaceful</div>
+          <div class="g-prompt">"Soft ambient textures with gentle pad layers, slow evolving harmonics, no percussion."</div>
+          <div style="display:flex;gap:.4rem;align-items:center;">
+            <button class="play-btn" style="width:26px;height:26px;font-size:.7rem;background:linear-gradient(135deg,var(--teal),#67e8f9);">▶</button>
             <a href="outputs/song_03_ambient_peaceful.wav" class="dl-btn dl-wav" download>WAV</a>
             <a href="outputs/song_03_ambient_peaceful.mid" class="dl-btn dl-mid" download>MIDI</a>
           </div>
         </div>
       </div>
 
-      <!-- Card 4 -->
-      <div class="gallery-card reveal" data-song="song_04_jazz_tense" style="transition-delay:0.24s;">
-        <div class="card-visual" style="background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(239,68,68,0.08));">
-          <canvas class="card-canvas" id="card-canvas-4"></canvas>
-          <div class="card-genre" style="background:rgba(245,158,11,0.15);color:#f59e0b;">JAZZ · TENSE</div>
+      <div class="g-card sr" data-sid="song_04_jazz_tense" style="transition-delay:.21s;" onclick="playGallery('song_04_jazz_tense','Jazz · Tense','Complex jazz with dissonant chords and syncopated rhythm',4,'#f97316','#fb923c')">
+        <div class="g-visual" style="background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(251,146,60,.05));">
+          <canvas class="g-cvs" id="g-cvs-4"></canvas>
+          <div class="g-genre" style="background:rgba(249,115,22,.15);color:var(--warn);">JAZZ · TENSE</div>
         </div>
-        <div class="card-body">
-          <div class="card-title">Song 04 — Jazz Tense</div>
-          <div class="card-prompt">"Complex jazz with dissonant chords, syncopated rhythm, muted trumpet, and walking bass."</div>
-          <div style="display:flex;gap:0.5rem;align-items:center;">
-            <button class="play-btn" style="width:28px;height:28px;font-size:0.7rem;" onclick="playGalleryCard('song_04_jazz_tense','Jazz Tense','Complex jazz with dissonant chords', 4)">▶</button>
+        <div class="g-body">
+          <div class="g-title">Song 04 — Jazz Tense</div>
+          <div class="g-prompt">"Complex jazz with dissonant chords, syncopated rhythm, muted trumpet, and walking bass."</div>
+          <div style="display:flex;gap:.4rem;align-items:center;">
+            <button class="play-btn" style="width:26px;height:26px;font-size:.7rem;background:linear-gradient(135deg,var(--warn),#fb923c);">▶</button>
             <a href="outputs/song_04_jazz_tense.wav" class="dl-btn dl-wav" download>WAV</a>
             <a href="outputs/song_04_jazz_tense.mid" class="dl-btn dl-mid" download>MIDI</a>
           </div>
@@ -1086,605 +1191,521 @@
       </div>
     </div>
 
-    <!-- Gallery waveform player -->
-    <div id="gallery-player" style="display:none;margin-top:2rem;" class="glass-card">
-      <div class="wave-container">
-        <canvas id="gallery-wave-canvas" style="display:block;width:100%;height:80px;"></canvas>
-      </div>
-      <div class="player-bar">
-        <button class="play-btn" id="gallery-play-btn" onclick="toggleGalleryPlay()">▶</button>
-        <div class="player-info">
-          <div class="player-name" id="gallery-player-name">—</div>
-          <div class="player-sub" id="gallery-player-sub">—</div>
+    <!-- Gallery player -->
+    <div id="gal-player">
+      <div class="glass player-wrap" style="max-width:640px;margin:0 auto;">
+        <div class="wave-area"><canvas class="wave-cvs" id="gal-wave" height="72"></canvas></div>
+        <div class="player-bar">
+          <button class="play-btn" id="gal-play-btn" onclick="toggleGalPlay()">▶</button>
+          <div class="player-info">
+            <div class="player-name" id="gal-pname">—</div>
+            <div class="player-sub" id="gal-psub">—</div>
+          </div>
+          <div class="dl-row">
+            <a id="gal-dl-wav" href="#" class="dl-btn dl-wav" download>WAV</a>
+            <a id="gal-dl-mid" href="#" class="dl-btn dl-mid" download>MIDI</a>
+          </div>
         </div>
-        <span class="proto-label" style="font-size:0.6rem;">Prototype output</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ═══════════════════ DATASETS ═══════════════════ -->
-<section class="section-pad" style="background:#040710;">
-  <div style="max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:start;">
-    <div class="reveal-left">
-      <div class="section-label">
-        <span class="label-num">05 — Data</span>
-        <div class="label-line"></div>
+<!-- ════════════════════════ DATASETS ════════════════════════ -->
+<section class="section-pad" style="background:var(--obsidian);">
+  <div class="max-w">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:start;">
+      <div class="sr-l">
+        <div class="section-eyebrow">
+          <span class="eyebrow-num">05</span><span class="eyebrow-slash">/</span>
+          <span class="eyebrow-txt">Datasets</span>
+        </div>
+        <h2 class="section-title">Training<br><span class="accent">Datasets</span></h2>
+        <p class="section-sub">Four curated datasets spanning pop, classical, diverse genres, and evaluation metadata.</p>
       </div>
-      <h2 class="section-title">Datasets<br><span style="background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Used</span></h2>
-      <p class="section-sub">Four curated datasets spanning pop, classical, diverse genres, and metadata — totaling thousands of hours of music.</p>
-    </div>
-    <div class="reveal">
-      <div class="glass-card" style="overflow:hidden;">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Dataset</th>
-              <th>Size</th>
-              <th>Use</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td><strong>POP909</strong></td><td>909 MIDI files</td><td>Pop symbolic training</td></tr>
-            <tr><td><strong>Lakh MIDI (clean)</strong></td><td>~17k files</td><td>Diverse genre symbolic training</td></tr>
-            <tr><td><strong>MAESTRO v3</strong></td><td>~200h piano</td><td>Classical + audio pairs</td></tr>
-            <tr><td><strong>MusicCaps</strong></td><td>Metadata only</td><td>Text-to-music evaluation</td></tr>
-          </tbody>
-        </table>
+      <div class="sr">
+        <div class="glass" style="overflow:hidden;">
+          <table class="ds-table">
+            <thead><tr><th>Dataset</th><th>Size</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td><strong>POP909</strong></td><td>909 MIDI files</td><td>Pop symbolic training</td></tr>
+              <tr><td><strong>Lakh MIDI (clean)</strong></td><td>~17k files</td><td>Diverse genre symbolic</td></tr>
+              <tr><td><strong>MAESTRO v3</strong></td><td>~200h piano</td><td>Classical + audio pairs</td></tr>
+              <tr><td><strong>MusicCaps</strong></td><td>Metadata only</td><td>Text-to-music evaluation</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ═══════════════════ LIMITATIONS ═══════════════════ -->
-<section id="limitations" class="section-pad">
-  <div style="max-width:900px;margin:0 auto;">
-    <div class="reveal" style="margin-bottom:2.5rem;">
-      <div class="section-label">
-        <span class="label-num">06 — Transparency</span>
-        <div class="label-line"></div>
+<!-- ════════════════════════ LIMITATIONS ════════════════════════ -->
+<section id="limits" class="section-pad">
+  <div class="max-w">
+    <div class="sr" style="margin-bottom:2.5rem;">
+      <div class="section-eyebrow">
+        <span class="eyebrow-num">06</span><span class="eyebrow-slash">/</span>
+        <span class="eyebrow-txt">Transparency</span>
       </div>
-      <h2 class="section-title">Technical Depth<br><span style="background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">& Limitations</span></h2>
+      <h2 class="section-title">Technical Depth<br><span style="font-style:italic;color:var(--warn);">& Limitations</span></h2>
     </div>
 
-    <div class="reveal">
-      <div class="limit-box">
-        <div class="limit-title">📋 Prototype Disclosure</div>
-        <p class="limit-text">
-          Note: The provided outputs represent sample results generated using a prototype implementation. Due to computational constraints, full-scale training was not performed, and the outputs are included to demonstrate the system pipeline and generation capability.
-        </p>
-      </div>
+    <div class="limit-box sr" style="margin-bottom:2rem;">
+      <div class="limit-title">📋 Prototype Disclosure — Verbatim from README</div>
+      <p class="limit-text">
+        Note: The provided outputs represent sample results generated using a prototype implementation. Due to computational constraints, full-scale training was not performed, and the outputs are included to demonstrate the system pipeline and generation capability.
+      </p>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem;">
-      <div class="glass-card reveal" style="padding:1.5rem;transition-delay:0.05s;">
-        <div style="font-size:1.2rem;margin-bottom:0.75rem;">🖥️</div>
-        <div style="font-weight:700;margin-bottom:0.5rem;font-size:0.95rem;">Compute Requirements</div>
-        <div style="font-size:0.8rem;color:#64748b;line-height:1.7;">Full-scale training requires 8× NVIDIA A100/A800 (80GB VRAM), ~500GB storage, and 48–96h training time. Prototype uses single-GPU small configs.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;">
+      <div class="glass sr" style="padding:1.5rem;transition-delay:.05s;">
+        <div style="font-size:1.25rem;margin-bottom:.6rem;">🖥️</div>
+        <div style="font-weight:700;margin-bottom:.4rem;">Compute Requirements</div>
+        <div style="font-size:.78rem;color:var(--cream-dim);line-height:1.65;">Full-scale: 8× NVIDIA A100/A800 (80GB each), ~500GB storage, 48–96h training. Prototype uses single-GPU small configs.</div>
       </div>
-      <div class="glass-card reveal" style="padding:1.5rem;transition-delay:0.1s;">
-        <div style="font-size:1.2rem;margin-bottom:0.75rem;">🎵</div>
-        <div style="font-weight:700;margin-bottom:0.5rem;font-size:0.95rem;">Output Quality</div>
-        <div style="font-size:0.8rem;color:#64748b;line-height:1.7;">Small model outputs demonstrate pipeline functionality, not commercial quality. Audio rendered via Griffin-Lim vocoder. Neural render bypass available via <code style="font-size:0.75rem;">--skip_neural_render</code>.</div>
+      <div class="glass sr" style="padding:1.5rem;transition-delay:.1s;">
+        <div style="font-size:1.25rem;margin-bottom:.6rem;">🎵</div>
+        <div style="font-weight:700;margin-bottom:.4rem;">Output Quality</div>
+        <div style="font-size:.78rem;color:var(--cream-dim);line-height:1.65;">Small-model outputs demonstrate pipeline function, not commercial quality. Griffin-Lim vocoder used. Use <code style="font-size:.85em;">--skip_neural_render</code> for FluidSynth fallback.</div>
       </div>
-      <div class="glass-card reveal" style="padding:1.5rem;transition-delay:0.15s;">
-        <div style="font-size:1.2rem;margin-bottom:0.75rem;">🔒</div>
-        <div style="font-weight:700;margin-bottom:0.5rem;font-size:0.95rem;">License</div>
-        <div style="font-size:0.8rem;color:#64748b;line-height:1.7;">This project is now released under a <strong style="color:var(--text);">proprietary license</strong>. All rights reserved. See the LICENSE file in the repository for details.</div>
+      <div class="glass sr" style="padding:1.5rem;transition-delay:.15s;">
+        <div style="font-size:1.25rem;margin-bottom:.6rem;">🔒</div>
+        <div style="font-weight:700;margin-bottom:.4rem;">License</div>
+        <div style="font-size:.78rem;color:var(--cream-dim);line-height:1.65;">This project is now released under a <strong style="color:var(--cream);">proprietary license</strong>. All rights reserved. See LICENSE in the repository.</div>
       </div>
-      <div class="glass-card reveal" style="padding:1.5rem;transition-delay:0.2s;">
-        <div style="font-size:1.2rem;margin-bottom:0.75rem;">🔧</div>
-        <div style="font-weight:700;margin-bottom:0.5rem;font-size:0.95rem;">Common Issues</div>
-        <div style="font-size:0.8rem;color:#64748b;line-height:1.7;">FluidSynth required for MIDI-to-audio. CUDA OOM → reduce batch size in YAML. Poor quality → train more steps or use larger dataset split.</div>
+      <div class="glass sr" style="padding:1.5rem;transition-delay:.2s;">
+        <div style="font-size:1.25rem;margin-bottom:.6rem;">🌐</div>
+        <div style="font-weight:700;margin-bottom:.4rem;">Live Demo Note</div>
+        <div style="font-size:.78rem;color:var(--cream-dim);line-height:1.65;">Live demo uses <strong style="color:var(--cream);">facebook/musicgen-small</strong> via HF Inference API — an external model, not this repo's trained weights. Prototype-scale only.</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ═══════════════════ GET STARTED ═══════════════════ -->
-<section id="getstarted" class="section-pad" style="background:linear-gradient(180deg,#040710,var(--bg));">
-  <div style="max-width:800px;margin:0 auto;">
-    <div class="reveal" style="margin-bottom:2.5rem;">
-      <div class="section-label">
-        <span class="label-num">07 — Quick Start</span>
-        <div class="label-line"></div>
+<!-- ════════════════════════ QUICK START ════════════════════════ -->
+<section id="quickstart" class="section-pad">
+  <div class="max-w">
+    <div class="sr" style="margin-bottom:2.75rem;">
+      <div class="section-eyebrow">
+        <span class="eyebrow-num">07</span><span class="eyebrow-slash">/</span>
+        <span class="eyebrow-txt">Quick Start</span>
       </div>
-      <h2 class="section-title">Get<br><span style="background:linear-gradient(135deg,var(--cyan),#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Started</span></h2>
-      <p class="section-sub">Two commands from clone to generated music. First run takes 5–10 minutes for environment setup.</p>
+      <h2 class="section-title">Get<br><span class="accent-v">Started</span></h2>
+      <p class="section-sub">Two commands from clone to generated music. First run ~5–10 minutes for environment setup.</p>
     </div>
 
-    <div class="start-block reveal">
-      <div style="font-size:0.7rem;color:var(--cyan);letter-spacing:0.15em;text-transform:uppercase;font-weight:700;margin-bottom:0.5rem;">Step 1 — Setup</div>
-      <div class="code-block">
-        <div class="comment"># Run setup (installs everything — ~5-10 minutes first time)</div>
-        <div><span class="cmd">bash</span> setup.sh</div>
-        <div class="code-progress" id="prog1"></div>
+    <div style="max-width:700px;">
+      <div class="sr" style="transition-delay:0s;">
+        <div style="font-size:.65rem;color:var(--gold);letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:.45rem;">Step 1 — Setup (~5–10 min)</div>
+        <div class="code-block"><span class="c-cmt"># Run setup (installs everything)</span><br><span class="c-cmd">bash</span> setup.sh</div>
       </div>
-    </div>
-
-    <div class="start-block reveal" style="margin-top:1.25rem;transition-delay:0.1s;">
-      <div style="font-size:0.7rem;color:var(--cyan);letter-spacing:0.15em;text-transform:uppercase;font-weight:700;margin-bottom:0.5rem;">Step 2 — Generate</div>
-      <div class="code-block">
-        <div class="comment"># Run full pipeline (data + train + generate)</div>
-        <div><span class="cmd">bash</span> run_full_pipeline.sh</div>
-        <div class="code-progress" id="prog2"></div>
+      <div style="height:1.25rem;"></div>
+      <div class="sr" style="transition-delay:.08s;">
+        <div style="font-size:.65rem;color:var(--gold);letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:.45rem;">Step 2 — Full Pipeline</div>
+        <div class="code-block"><span class="c-cmt"># Run full pipeline (data + train + generate)</span><br><span class="c-cmd">bash</span> run_full_pipeline.sh</div>
       </div>
-    </div>
-
-    <div class="start-block reveal" style="margin-top:1.25rem;transition-delay:0.2s;">
-      <div style="font-size:0.7rem;color:#a78bfa;letter-spacing:0.15em;text-transform:uppercase;font-weight:700;margin-bottom:0.5rem;">Outputs Location</div>
-      <div class="code-block">
-        <div class="comment"># After completion, find your generated music in outputs/:</div>
-        <div>outputs/</div>
-        <div>&nbsp;&nbsp;<span class="value">song_01_pop_happy.mid</span> / <span class="value">.wav</span></div>
-        <div>&nbsp;&nbsp;<span class="value">song_02_classical_sad.mid</span> / <span class="value">.wav</span></div>
-        <div>&nbsp;&nbsp;<span class="value">song_03_ambient_peaceful.mid</span> / <span class="value">.wav</span></div>
-        <div>&nbsp;&nbsp;<span class="value">song_04_jazz_tense.mid</span> / <span class="value">.wav</span></div>
+      <div style="height:1.25rem;"></div>
+      <div class="sr" style="transition-delay:.16s;">
+        <div style="font-size:.65rem;color:var(--teal);letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:.45rem;">Custom Song Generation</div>
+        <div class="code-block">
+          <span class="c-cmd">conda activate</span> ai-music-gen<br><br>
+          <span class="c-cmd">python</span> 05_generate_song.py \<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--prompt</span> &nbsp;&nbsp;<span class="c-val">"epic orchestral battle theme with brass and percussion"</span> \<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--style</span> &nbsp;&nbsp;&nbsp;<span class="c-val">CLASSICAL</span> \<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--emotion</span> &nbsp;<span class="c-val">TENSE</span> \<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--tempo</span> &nbsp;&nbsp; <span class="c-val">140</span> \<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--bars_per_section</span> <span class="c-val">16</span> \<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-flag">--output_name</span> my_custom_song<br>
+          <span class="c-cmt"># Styles: POP | CLASSICAL | JAZZ | FOLK | ELECTRONIC | AMBIENT</span><br>
+          <span class="c-cmt"># Emotions: HAPPY | SAD | TENSE | PEACEFUL</span>
+        </div>
       </div>
-    </div>
-
-    <div class="start-block reveal" style="margin-top:1.25rem;transition-delay:0.3s;">
-      <div style="font-size:0.7rem;color:#34d399;letter-spacing:0.15em;text-transform:uppercase;font-weight:700;margin-bottom:0.5rem;">Custom Generation</div>
-      <div class="code-block">
-        <div><span class="cmd">conda activate</span> ai-music-gen</div>
-        <div style="margin-top:0.5rem;"><span class="cmd">python</span> 05_generate_song.py \</div>
-        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--prompt</span> &nbsp;&nbsp;<span class="value">"epic orchestral battle theme with brass and percussion"</span> \</div>
-        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--style</span> &nbsp;&nbsp;&nbsp;<span class="value">CLASSICAL</span> \</div>
-        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--emotion</span> &nbsp;<span class="value">TENSE</span> \</div>
-        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--tempo</span> &nbsp;&nbsp; <span class="value">140</span> \</div>
-        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--bars_per_section</span> <span class="value">16</span> \</div>
-        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="flag">--output_name</span> my_custom_song</div>
-        <div style="margin-top:0.5rem;" class="comment"># --temperature 0.8   # lower = more conservative</div>
-        <div class="comment"># --top_p 0.85        # nucleus sampling p</div>
-        <div class="comment"># --skip_neural_render  # force FluidSynth output</div>
+      <div style="height:1.25rem;"></div>
+      <div class="sr" style="transition-delay:.24s;">
+        <div style="font-size:.65rem;color:var(--violet-lt);letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:.45rem;">Full-Scale 8×A100</div>
+        <div class="code-block">
+          <span class="c-cmt"># Multi-GPU symbolic training</span><br>
+          <span class="c-cmd">torchrun</span> <span class="c-flag">--nproc_per_node=8</span> 02_train_symbolic.py <span class="c-flag">--config</span> <span class="c-val">config/symbolic_full.yaml</span><br><br>
+          <span class="c-cmt"># Monitor via TensorBoard</span><br>
+          <span class="c-cmd">tensorboard</span> <span class="c-flag">--logdir</span> runs/
+        </div>
       </div>
-    </div>
-
-    <!-- Monitor training -->
-    <div class="start-block reveal" style="margin-top:1.25rem;transition-delay:0.4s;">
-      <div style="font-size:0.7rem;color:#f59e0b;letter-spacing:0.15em;text-transform:uppercase;font-weight:700;margin-bottom:0.5rem;">Monitor Training</div>
-      <div class="code-block">
-        <div class="comment"># TensorBoard</div>
-        <div><span class="cmd">tensorboard</span> <span class="flag">--logdir</span> runs/</div>
-        <div style="margin-top:0.5rem;" class="comment"># Check checkpoints</div>
-        <div><span class="cmd">ls -lh</span> checkpoints/symbolic/</div>
-        <div><span class="cmd">ls -lh</span> checkpoints/renderer/</div>
-        <div><span class="cmd">ls -lh</span> checkpoints/aligned/</div>
+      <div class="sr" style="margin-top:2.5rem;text-align:center;transition-delay:.32s;">
+        <a href="https://github.com/711nishtha/AI-Music-Generation-Hybrid-Framework" target="_blank" class="btn-gold" style="font-size:.9rem;padding:.95rem 2.25rem;">⭐ View Full Repository on GitHub</a>
       </div>
-    </div>
-
-    <div class="reveal" style="margin-top:3rem;text-align:center;">
-      <a href="https://github.com/711nishtha/AI-Music-Generation-Hybrid-Framework" target="_blank" class="btn-primary" style="font-size:0.9rem;padding:1rem 2.5rem;">
-        ★ View Full Repository on GitHub
-      </a>
     </div>
   </div>
 </section>
 
-<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<!-- ════════════════════════ FOOTER ════════════════════════ -->
 <footer>
-  <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:2rem;align-items:center;">
+  <div class="footer-inner">
     <div>
-      <div class="nav-logo" style="font-size:1.1rem;margin-bottom:0.75rem;">♬ AI Music Generation — Hybrid Framework</div>
-      <p style="font-size:0.8rem;color:#374151;line-height:1.7;max-width:480px;">A research-oriented implementation combining Transformer-based symbolic planning, diffusion-based audio synthesis, and preference alignment.</p>
-      <div style="margin-top:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;">
-        <span style="font-size:0.72rem;color:#374151;">Python 83% · Shell 17%</span>
-        <span style="font-size:0.72rem;color:#374151;">🔒 Proprietary License</span>
-        <a href="https://github.com/711nishtha/AI-Music-Generation-Hybrid-Framework" style="font-size:0.72rem;color:var(--cyan);text-decoration:none;" target="_blank">github.com/711nishtha</a>
+      <div class="footer-wordmark">♩ AI Music Generation — Hybrid Framework</div>
+      <p style="font-size:.78rem;color:#2a2840;margin-top:.5rem;max-width:420px;line-height:1.65;">
+        Research implementation: Transformer-based symbolic planning + diffusion audio synthesis + preference alignment.
+        Python 83% · Shell 17% · Proprietary License.
+      </p>
+      <div style="margin-top:.85rem;display:flex;gap:1.25rem;flex-wrap:wrap;">
+        <a href="https://github.com/711nishtha/AI-Music-Generation-Hybrid-Framework" target="_blank" style="font-size:.72rem;color:var(--gold);text-decoration:none;">→ GitHub Repo</a>
+        <span style="font-size:.72rem;color:#2a2840;">Based on "AI in Music Generation" (2026)</span>
       </div>
     </div>
 
+    <!-- QR placeholder -->
     <div style="text-align:center;">
-      <!-- QR Placeholder -->
-      <div style="width:96px;height:96px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
-        <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
-          <rect x="2" y="2" width="24" height="24" rx="2" stroke="#00f5ff" stroke-width="2" fill="none"/>
-          <rect x="7" y="7" width="14" height="14" rx="1" fill="#00f5ff" opacity="0.3"/>
-          <rect x="34" y="2" width="24" height="24" rx="2" stroke="#00f5ff" stroke-width="2" fill="none"/>
-          <rect x="39" y="7" width="14" height="14" rx="1" fill="#00f5ff" opacity="0.3"/>
-          <rect x="2" y="34" width="24" height="24" rx="2" stroke="#00f5ff" stroke-width="2" fill="none"/>
-          <rect x="7" y="39" width="14" height="14" rx="1" fill="#00f5ff" opacity="0.3"/>
-          <rect x="34" y="34" width="6" height="6" fill="#00f5ff" opacity="0.6"/>
-          <rect x="44" y="34" width="6" height="6" fill="#00f5ff" opacity="0.6"/>
-          <rect x="34" y="44" width="6" height="6" fill="#00f5ff" opacity="0.6"/>
-          <rect x="44" y="44" width="6" height="6" fill="#00f5ff" opacity="0.6"/>
-          <rect x="54" y="34" width="4" height="4" fill="#7c3aed" opacity="0.8"/>
-          <rect x="54" y="44" width="4" height="4" fill="#7c3aed" opacity="0.8"/>
-          <rect x="54" y="54" width="4" height="4" fill="#7c3aed" opacity="0.8"/>
+      <div style="width:88px;height:88px;background:rgba(212,168,83,.06);border:1px solid rgba(212,168,83,.18);border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto .6rem;">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+          <rect x="2" y="2" width="20" height="20" rx="2" stroke="#d4a853" stroke-width="1.5" fill="none"/>
+          <rect x="6" y="6" width="12" height="12" rx="1" fill="#d4a853" opacity=".25"/>
+          <rect x="30" y="2" width="20" height="20" rx="2" stroke="#d4a853" stroke-width="1.5" fill="none"/>
+          <rect x="34" y="6" width="12" height="12" rx="1" fill="#d4a853" opacity=".25"/>
+          <rect x="2" y="30" width="20" height="20" rx="2" stroke="#d4a853" stroke-width="1.5" fill="none"/>
+          <rect x="6" y="34" width="12" height="12" rx="1" fill="#d4a853" opacity=".25"/>
+          <rect x="30" y="30" width="5" height="5" fill="#7c6ef9" opacity=".6"/>
+          <rect x="38" y="30" width="5" height="5" fill="#7c6ef9" opacity=".6"/>
+          <rect x="30" y="38" width="5" height="5" fill="#7c6ef9" opacity=".6"/>
+          <rect x="38" y="38" width="5" height="5" fill="#7c6ef9" opacity=".6"/>
+          <rect x="46" y="30" width="4" height="4" fill="#2dd4bf" opacity=".7"/>
+          <rect x="46" y="38" width="4" height="4" fill="#2dd4bf" opacity=".7"/>
+          <rect x="46" y="46" width="4" height="4" fill="#2dd4bf" opacity=".7"/>
+          <rect x="30" y="46" width="4" height="4" fill="#2dd4bf" opacity=".7"/>
         </svg>
       </div>
-      <div style="font-size:0.62rem;color:#374151;text-transform:uppercase;letter-spacing:0.08em;">Scan for GitHub</div>
+      <div style="font-size:.6rem;color:#2a2840;text-transform:uppercase;letter-spacing:.08em;">GitHub QR</div>
     </div>
   </div>
 
-  <div style="max-width:1100px;margin:2rem auto 0;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
-    <div class="comp-badge">🏆 Made for Ganpat University Winter Student Research Competition 2026</div>
-    <span style="font-size:0.72rem;color:#1f2937;">Based on: "AI in Music Generation" (2026) · Symbolic Planning + Diffusion + DPO</span>
+  <div style="max-width:1100px;margin:1.75rem auto 0;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.04);text-align:center;">
+    <div class="comp-badge" style="font-size:.65rem;">🏆 Made for Ganpat University Winter Student Research Competition 2026</div>
   </div>
 </footer>
 
+<!-- ══════════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════════ -->
 <script>
-// ═══════ CURSOR ═══════
-const cursor = document.getElementById('cursor');
-const ring = document.getElementById('cursor-ring');
-let mx = 0, my = 0, rx = 0, ry = 0;
-document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cursor.style.left = mx+'px'; cursor.style.top = my+'px'; });
-function animRing() {
-  rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
-  ring.style.left = rx+'px'; ring.style.top = ry+'px';
+/* ── Cursor ── */
+const cur = document.getElementById('cur');
+const curRing = document.getElementById('cur-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => {
+  mx=e.clientX; my=e.clientY;
+  cur.style.left=mx+'px'; cur.style.top=my+'px';
+});
+(function animRing(){
+  rx+=(mx-rx)*.12; ry+=(my-ry)*.12;
+  curRing.style.left=rx+'px'; curRing.style.top=ry+'px';
   requestAnimationFrame(animRing);
-}
-animRing();
+})();
 
-// ═══════ PARTICLE CANVAS ═══════
-(function() {
-  const canvas = document.getElementById('particle-canvas');
-  const ctx = canvas.getContext('2d');
-  let W, H, particles = [], mouse = { x: -999, y: -999 };
-  const NOTE_CHARS = ['♩','♪','♫','♬','𝄞','♭','♯'];
+/* ── Background particle canvas ── */
+(function(){
+  const c = document.getElementById('bg-canvas');
+  const ctx = c.getContext('2d');
+  let W,H,ps=[];
+  const CHARS=['♩','♪','♫','♬','𝄞','NOTE','BAR'];
+  function resize(){ W=c.width=innerWidth; H=c.height=innerHeight; }
+  resize(); addEventListener('resize',resize);
 
-  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-  resize();
-  window.addEventListener('resize', resize);
-  document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  let mx2=W/2,my2=H/2;
+  addEventListener('mousemove',e=>{mx2=e.clientX;my2=e.clientY;});
 
-  class Particle {
-    constructor() { this.reset(); }
-    reset() {
-      this.x = Math.random() * W;
-      this.y = Math.random() * H;
-      this.size = Math.random() * 10 + 8;
-      this.char = NOTE_CHARS[Math.floor(Math.random() * NOTE_CHARS.length)];
-      this.vx = (Math.random() - 0.5) * 0.3;
-      this.vy = (Math.random() - 0.5) * 0.3 - 0.1;
-      this.alpha = Math.random() * 0.25 + 0.05;
-      this.baseAlpha = this.alpha;
-      this.hue = Math.random() > 0.5 ? '0,245,255' : '124,58,237';
+  class P {
+    constructor(){this.reset(true);}
+    reset(init){
+      this.x=Math.random()*W; this.y=init?Math.random()*H:H+20;
+      this.vy=-(Math.random()*.4+.1);
+      this.vx=(Math.random()-.5)*.15;
+      this.alpha=Math.random()*.18+.04;
+      this.size=Math.random()*9+7;
+      this.ch=CHARS[Math.floor(Math.random()*CHARS.length)];
+      this.col=Math.random()>.5?`rgba(212,168,83,`:`rgba(124,110,249,`;
+      this.trail=[];
     }
-    update() {
-      const dx = this.x - mouse.x, dy = this.y - mouse.y;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < 120) {
-        const force = (120 - dist) / 120;
-        this.vx += (dx / dist) * force * 0.5;
-        this.vy += (dy / dist) * force * 0.5;
-        this.alpha = Math.min(this.baseAlpha * 3, 0.6);
-      } else {
-        this.alpha += (this.baseAlpha - this.alpha) * 0.05;
+    update(){
+      const dx=this.x-mx2,dy=this.y-my2,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<100){const f=(100-d)/100*0.3;this.vx+=dx/d*f;this.vy+=dy/d*f;}
+      this.vx*=.98;this.vy*=.98;
+      this.trail.push({x:this.x,y:this.y});
+      if(this.trail.length>6)this.trail.shift();
+      this.x+=this.vx; this.y+=this.vy;
+      if(this.y<-30||this.x<-40||this.x>W+40)this.reset(false);
+    }
+    draw(){
+      // soft trail
+      if(this.trail.length>1){
+        ctx.beginPath();
+        ctx.moveTo(this.trail[0].x,this.trail[0].y);
+        this.trail.forEach(p=>ctx.lineTo(p.x,p.y));
+        ctx.strokeStyle=this.col+this.alpha*.5+')';
+        ctx.lineWidth=1;ctx.stroke();
       }
-      this.vx *= 0.97; this.vy *= 0.97;
-      this.x += this.vx; this.y += this.vy;
-      if (this.x < -20 || this.x > W + 20 || this.y < -20 || this.y > H + 20) this.reset();
-    }
-    draw() {
       ctx.save();
-      ctx.globalAlpha = this.alpha;
-      ctx.fillStyle = `rgba(${this.hue},1)`;
-      ctx.font = `${this.size}px serif`;
-      ctx.fillText(this.char, this.x, this.y);
+      ctx.globalAlpha=this.alpha;
+      ctx.fillStyle=this.col+`1)`;
+      ctx.font=`${this.size}px serif`;
+      ctx.fillText(this.ch,this.x,this.y);
       ctx.restore();
     }
   }
-
-  for (let i = 0; i < 70; i++) particles.push(new Particle());
-  function animate() {
-    ctx.clearRect(0, 0, W, H);
-    particles.forEach(p => { p.update(); p.draw(); });
-    requestAnimationFrame(animate);
-  }
-  animate();
+  for(let i=0;i<65;i++)ps.push(new P());
+  function frame(){ctx.clearRect(0,0,W,H);ps.forEach(p=>{p.update();p.draw();});requestAnimationFrame(frame);}
+  frame();
 })();
 
-// ═══════ HERO WAVEFORM ═══════
-(function() {
-  const canvas = document.getElementById('hero-wave');
-  const ctx = canvas.getContext('2d');
-  let t = 0;
-  function draw() {
-    const W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
+/* ── Hero waveform ── */
+(function(){
+  const c=document.getElementById('hero-wave-canvas');
+  const ctx=c.getContext('2d');
+  let t=0;
+  function frame(){
+    const W=c.offsetWidth||600,H=56;
+    c.width=W;c.height=H;
+    ctx.clearRect(0,0,W,H);
     ctx.beginPath();
-    const grad = ctx.createLinearGradient(0, 0, W, 0);
-    grad.addColorStop(0, 'rgba(0,245,255,0)');
-    grad.addColorStop(0.2, 'rgba(0,245,255,0.8)');
-    grad.addColorStop(0.5, 'rgba(124,58,237,0.8)');
-    grad.addColorStop(0.8, 'rgba(0,245,255,0.6)');
-    grad.addColorStop(1, 'rgba(0,245,255,0)');
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 2;
-    for (let x = 0; x < W; x++) {
-      const freq = 0.025;
-      const amp = H * 0.35 * (1 - Math.abs((x/W) - 0.5) * 1.6);
-      const y = H/2
-        + Math.sin(x * freq + t) * amp
-        + Math.sin(x * freq * 2.3 + t * 1.7) * amp * 0.4
-        + Math.sin(x * freq * 0.5 + t * 0.5) * amp * 0.3;
-      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    const g=ctx.createLinearGradient(0,0,W,0);
+    g.addColorStop(0,'rgba(212,168,83,0)');
+    g.addColorStop(.2,'rgba(212,168,83,.7)');
+    g.addColorStop(.55,'rgba(124,110,249,.8)');
+    g.addColorStop(.85,'rgba(45,212,191,.6)');
+    g.addColorStop(1,'rgba(45,212,191,0)');
+    ctx.strokeStyle=g; ctx.lineWidth=1.5;
+    for(let x=0;x<W;x++){
+      const edge=1-Math.abs((x/W)-.5)*2;
+      const amp=H*.38*edge;
+      const y=H/2
+        +Math.sin(x*.022+t)*amp
+        +Math.sin(x*.051+t*1.6)*amp*.45
+        +Math.sin(x*.009+t*.4)*amp*.3;
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
     }
     ctx.stroke();
-    t += 0.04;
-    requestAnimationFrame(draw);
+    t+=.035;requestAnimationFrame(frame);
   }
-  draw();
+  frame();
 })();
 
-// ═══════ SCROLL REVEAL ═══════
+/* ── GSAP ── */
 gsap.registerPlugin(ScrollTrigger);
-document.querySelectorAll('.reveal, .reveal-left').forEach((el, i) => {
-  const isLeft = el.classList.contains('reveal-left');
+gsap.fromTo('nav',{opacity:0,y:-20},{opacity:1,y:0,duration:.8,ease:'power2.out',delay:.15});
+gsap.fromTo('.hero-inner',{opacity:0,y:55},{opacity:1,y:0,duration:1.3,ease:'power4.out',delay:.3});
+gsap.fromTo('.orb-wrap',{opacity:0,scale:.8},{opacity:1,scale:1,duration:1.6,ease:'power3.out',delay:.6});
+gsap.to('.orb-wrap',{y:-35,ease:'none',scrollTrigger:{trigger:'#hero',start:'top top',end:'bottom top',scrub:true}});
+gsap.to('.hero-inner',{y:30,ease:'none',scrollTrigger:{trigger:'#hero',start:'top top',end:'bottom top',scrub:true}});
+
+document.querySelectorAll('.sr,.sr-l').forEach(el=>{
+  const isL=el.classList.contains('sr-l');
   gsap.fromTo(el,
-    { opacity: 0, x: isLeft ? -40 : 0, y: isLeft ? 0 : 35 },
-    { opacity: 1, x: 0, y: 0, duration: 0.85, ease: 'power3.out',
-      delay: parseFloat(el.style.transitionDelay) || 0,
-      scrollTrigger: { trigger: el, start: 'top 88%', toggleActions: 'play none none none' }
-    }
+    {opacity:0,x:isL?-35:0,y:isL?0:28},
+    {opacity:1,x:0,y:0,duration:.85,ease:'power3.out',
+     delay:parseFloat(el.style.transitionDelay)||0,
+     scrollTrigger:{trigger:el,start:'top 88%',toggleActions:'play none none none'}}
   );
 });
 
-// ═══════ GALLERY STATIC WAVEFORMS ═══════
-const cardColors = [
-  ['#00f5ff','#0066ff'],
-  ['#7c3aed','#0066ff'],
-  ['#34d399','#00f5ff'],
-  ['#f59e0b','#ef4444']
+/* ── Gallery card static wave canvases ── */
+const gCardColors=[
+  ['#d4a853','#f0c96a'],
+  ['#7c6ef9','#a99eff'],
+  ['#2dd4bf','#67e8f9'],
+  ['#f97316','#fb923c']
 ];
-for (let i = 1; i <= 4; i++) {
-  (function(idx) {
-    const canvas = document.getElementById('card-canvas-' + idx);
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = canvas.offsetWidth || 280;
-    canvas.height = canvas.offsetHeight || 120;
-    const bars = 40;
-    const colors = cardColors[idx - 1];
-    let t = 0, isActive = false;
-    function draw() {
-      const W = canvas.offsetWidth || 280, H = canvas.offsetHeight || 120;
-      canvas.width = W; canvas.height = H;
-      ctx.clearRect(0, 0, W, H);
-      const bw = W / bars - 1;
-      for (let b = 0; b < bars; b++) {
-        const phase = b * 0.4 + t;
-        const h = (Math.sin(phase) * 0.5 + 0.5) * H * 0.65 + H * 0.08;
-        const grad = ctx.createLinearGradient(0, H/2 - h/2, 0, H/2 + h/2);
-        grad.addColorStop(0, colors[0] + '99');
-        grad.addColorStop(1, colors[1] + '33');
-        ctx.fillStyle = grad;
-        ctx.fillRect(b * (bw + 1), (H - h) / 2, bw, h);
+for(let i=1;i<=4;i++){
+  (function(idx){
+    const c=document.getElementById('g-cvs-'+idx);
+    if(!c)return;
+    const ctx=c.getContext('2d');
+    let t=0;
+    function frame(){
+      const W=c.parentElement?c.parentElement.offsetWidth:280;
+      const H=110;
+      c.width=W;c.height=H;
+      ctx.clearRect(0,0,W,H);
+      const bars=48, bw=W/bars-1;
+      const [ca,cb]=gCardColors[idx-1];
+      for(let b=0;b<bars;b++){
+        const h=(Math.sin(b*.38+t)*0.5+0.5)*H*.72+H*.08;
+        const g=ctx.createLinearGradient(0,H/2-h/2,0,H/2+h/2);
+        g.addColorStop(0,ca+'cc'); g.addColorStop(1,cb+'22');
+        ctx.fillStyle=g;
+        ctx.fillRect(b*(bw+1),(H-h)/2,bw,h);
       }
-      t += 0.04;
-      requestAnimationFrame(draw);
+      t+=.038;requestAnimationFrame(frame);
     }
-    draw();
+    frame();
   })(i);
 }
 
-// ═══════ AUDIO SYSTEM ═══════
-let globalAudio = null;
-let globalWaveCtx = null;
-let globalAnalyser = null;
-let globalAudioCtx = null;
-let waveAnimId = null;
-let demoWaveCanvas = null;
-let galleryWaveCanvas = null;
-let currentGlobalMode = null; // 'demo' or 'gallery'
+/* ── Global audio state ── */
+let globalAudio=null,globalAudioCtx=null,globalAnalyser=null,wafId=null;
+let galPlaying=false,curGalSong=null;
 
-function stopAll() {
-  if (globalAudio) { globalAudio.pause(); globalAudio.currentTime = 0; }
-  if (waveAnimId) { cancelAnimationFrame(waveAnimId); waveAnimId = null; }
+function stopAll(){
+  if(globalAudio){globalAudio.pause();globalAudio.currentTime=0;}
+  if(wafId){cancelAnimationFrame(wafId);wafId=null;}
 }
 
-function drawSimulatedWave(canvas, colorA, colorB) {
-  const ctx = canvas.getContext('2d');
-  let t = 0;
-  function frame() {
-    const W = canvas.offsetWidth; const H = canvas.height;
-    canvas.width = W;
-    ctx.clearRect(0, 0, W, H);
-    const bars = 60;
-    const bw = W / bars - 1;
-    for (let b = 0; b < bars; b++) {
-      const h = (Math.sin(b * 0.4 + t) * 0.5 + 0.5) * H * 0.8 + H * 0.1;
-      const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, colorA + 'cc');
-      grad.addColorStop(1, colorB + '44');
-      ctx.fillStyle = grad;
-      ctx.fillRect(b * (bw + 1), (H - h) / 2, bw, h);
+function drawWave(canvas,analyser,ca,cb){
+  const ctx=canvas.getContext('2d');
+  const buf=new Uint8Array(analyser.frequencyBinCount);
+  function fr(){
+    analyser.getByteFrequencyData(buf);
+    const W=canvas.offsetWidth,H=72;
+    canvas.width=W;canvas.height=H;
+    ctx.clearRect(0,0,W,H);
+    const bars=Math.min(buf.length,64),bw=W/bars-1;
+    for(let b=0;b<bars;b++){
+      const h=(buf[b]/255)*H*.88+H*.06;
+      const g=ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,ca+'ee');g.addColorStop(1,cb+'33');
+      ctx.fillStyle=g;
+      ctx.fillRect(b*(bw+1),(H-h)/2,bw,h);
     }
-    t += 0.05;
-    waveAnimId = requestAnimationFrame(frame);
+    wafId=requestAnimationFrame(fr);
   }
-  frame();
+  fr();
 }
 
-function drawRealWave(canvas, analyser, colorA, colorB) {
-  const ctx = canvas.getContext('2d');
-  const bufLen = analyser.frequencyBinCount;
-  const dataArr = new Uint8Array(bufLen);
-  function frame() {
-    analyser.getByteFrequencyData(dataArr);
-    const W = canvas.offsetWidth; const H = canvas.height;
-    canvas.width = W;
-    ctx.clearRect(0, 0, W, H);
-    const bars = Math.min(bufLen, 60);
-    const bw = W / bars - 1;
-    for (let b = 0; b < bars; b++) {
-      const h = (dataArr[b] / 255) * H * 0.9 + H * 0.05;
-      const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, colorA + 'dd');
-      grad.addColorStop(1, colorB + '44');
-      ctx.fillStyle = grad;
-      ctx.fillRect(b * (bw + 1), (H - h) / 2, bw, h);
+function drawSimWave(canvas,ca,cb){
+  const ctx=canvas.getContext('2d');
+  let t=0;
+  function fr(){
+    const W=canvas.offsetWidth,H=72;
+    canvas.width=W;canvas.height=H;
+    ctx.clearRect(0,0,W,H);
+    const bars=64,bw=W/bars-1;
+    for(let b=0;b<bars;b++){
+      const h=(Math.sin(b*.38+t)*.5+.5)*H*.8+H*.08;
+      const g=ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,ca+'cc');g.addColorStop(1,cb+'33');
+      ctx.fillStyle=g;
+      ctx.fillRect(b*(bw+1),(H-h)/2,bw,h);
     }
-    waveAnimId = requestAnimationFrame(frame);
+    t+=.04;wafId=requestAnimationFrame(fr);
   }
-  frame();
+  fr();
 }
 
-function playSong(songId, canvasEl, colorA, colorB, onEnd) {
+function startAudio(src,canvas,ca,cb,onEnd){
   stopAll();
-  const src = 'outputs/' + songId + '.wav';
-  globalAudio = new Audio(src);
-
-  try {
-    globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = globalAudioCtx.createMediaElementSource(globalAudio);
-    globalAnalyser = globalAudioCtx.createAnalyser();
-    globalAnalyser.fftSize = 128;
-    source.connect(globalAnalyser);
-    globalAnalyser.connect(globalAudioCtx.destination);
-    globalAudio.play().then(() => {
-      if (waveAnimId) cancelAnimationFrame(waveAnimId);
-      drawRealWave(canvasEl, globalAnalyser, colorA, colorB);
-    }).catch(() => {
-      drawSimulatedWave(canvasEl, colorA, colorB);
-    });
-  } catch(e) {
-    globalAudio.play().catch(() => {});
-    drawSimulatedWave(canvasEl, colorA, colorB);
+  globalAudio=new Audio(src);
+  try{
+    globalAudioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const src2=globalAudioCtx.createMediaElementSource(globalAudio);
+    globalAnalyser=globalAudioCtx.createAnalyser();
+    globalAnalyser.fftSize=128;
+    src2.connect(globalAnalyser);globalAnalyser.connect(globalAudioCtx.destination);
+    globalAudio.play().then(()=>drawWave(canvas,globalAnalyser,ca,cb))
+      .catch(()=>drawSimWave(canvas,ca,cb));
+  }catch(e){
+    globalAudio.play().catch(()=>{});
+    drawSimWave(canvas,ca,cb);
   }
+  if(onEnd)globalAudio.addEventListener('ended',onEnd);
+}
 
-  globalAudio.addEventListener('ended', () => {
-    if (waveAnimId) { cancelAnimationFrame(waveAnimId); waveAnimId = null; }
-    if (onEnd) onEnd();
+/* ── Gallery playback ── */
+function playGallery(sid,name,prompt,num,ca,cb){
+  curGalSong=sid;
+  document.querySelectorAll('.g-card').forEach(c=>c.classList.remove('active-card'));
+  const card=document.querySelector('[data-sid="'+sid+'"]');
+  if(card)card.classList.add('active-card');
+  document.getElementById('gal-player').style.display='block';
+  document.getElementById('gal-pname').textContent=name;
+  document.getElementById('gal-psub').textContent=prompt;
+  document.getElementById('gal-dl-wav').href='outputs/'+sid+'.wav';
+  document.getElementById('gal-dl-mid').href='outputs/'+sid+'.mid';
+  const canvas=document.getElementById('gal-wave');
+  startAudio('outputs/'+sid+'.wav',canvas,ca,cb,()=>{
+    galPlaying=false;
+    document.getElementById('gal-play-btn').textContent='▶';
   });
+  galPlaying=true;
+  document.getElementById('gal-play-btn').textContent='❚❚';
+}
+function toggleGalPlay(){
+  if(!globalAudio)return;
+  if(galPlaying){
+    globalAudio.pause();galPlaying=false;
+    document.getElementById('gal-play-btn').textContent='▶';
+    if(wafId){cancelAnimationFrame(wafId);wafId=null;}
+  }else{
+    globalAudio.play().catch(()=>{});galPlaying=true;
+    document.getElementById('gal-play-btn').textContent='❚❚';
+    const canvas=document.getElementById('gal-wave');
+    if(globalAnalyser)drawWave(canvas,globalAnalyser,'#d4a853','#f0c96a');
+    else drawSimWave(canvas,'#d4a853','#f0c96a');
+  }
 }
 
-// ═══════ DEMO GENERATION ═══════
-const songMap = {
-  'POP-HAPPY': { id: 'song_01_pop_happy', name: 'Song 01 — Pop Happy', prompt: 'Upbeat pop with bright piano' },
-  'POP-SAD': { id: 'song_02_classical_sad', name: 'Song 02 — Classical Sad', prompt: 'Melancholic piano piece' },
-  'CLASSICAL-SAD': { id: 'song_02_classical_sad', name: 'Song 02 — Classical Sad', prompt: 'Melancholic piano piece' },
-  'AMBIENT-PEACEFUL': { id: 'song_03_ambient_peaceful', name: 'Song 03 — Ambient Peaceful', prompt: 'Soft ambient textures' },
-  'JAZZ-TENSE': { id: 'song_04_jazz_tense', name: 'Song 04 — Jazz Tense', prompt: 'Complex jazz dissonance' },
-};
-
-function pickSong(style, emotion) {
-  const key = style + '-' + emotion;
-  if (songMap[key]) return songMap[key];
-  // fallback cycle
-  const all = Object.values(songMap);
-  const hash = (style.charCodeAt(0) + emotion.charCodeAt(0)) % all.length;
-  return all[hash];
+/* ── Demo: MusicGen API generation ── */
+async function callMusicGen(prompt, token){
+  const url='https://api-inference.huggingface.co/models/facebook/musicgen-small';
+  const headers={'Content-Type':'application/json'};
+  if(token)headers['Authorization']='Bearer '+token;
+  const resp=await fetch(url,{method:'POST',headers,body:JSON.stringify({inputs:prompt})});
+  if(resp.status===503){
+    const info=await resp.json().catch(()=>({}));
+    const wait=(info.estimated_time||20)*1000;
+    await new Promise(r=>setTimeout(r,wait));
+    return callMusicGen(prompt,token);
+  }
+  if(!resp.ok){const e=await resp.json().catch(()=>({error:'API error'}));throw new Error(e.error||'HTTP '+resp.status);}
+  const blob=await resp.blob();
+  return URL.createObjectURL(blob);
 }
 
-function startGeneration(data) {
-  if (data.generating) return;
-  data.generating = true;
-  data.generated = false;
-  data.generationStep = 0;
+window.runGeneration=async function(data){
+  if(data.generating)return;
+  data.generating=true; data.generated=false; data.genError=''; data.genMsg='';
+  data.genStep=0; data.isPlaying=false;
 
-  const steps = [
-    { step: 1, delay: 400 },
-    { step: 2, delay: 2000 },
-    { step: 3, delay: 3600 },
-    { step: 4, delay: 5200 }
+  const steps=[
+    {s:1,delay:350,msg:''},
+    {s:2,delay:1400,msg:''},
+    {s:3,delay:2600,msg:''},
+    {s:4,delay:3600,msg:'Calling facebook/musicgen-small via Hugging Face API…'}
   ];
-
-  steps.forEach(({ step, delay }) => {
-    setTimeout(() => {
-      data.generationStep = step;
-      if (step === 4) {
-        data.generating = false;
-        data.generated = true;
-        const song = pickSong(data.selectedStyle, data.selectedEmotion);
-        data.currentSong = song;
-
-        setTimeout(() => {
-          const canvas = document.getElementById('demo-wave-canvas');
-          if (canvas) {
-            currentGlobalMode = 'demo';
-            playSong(song.id, canvas, '#00f5ff', '#7c3aed', () => { data.isPlaying = false; });
-            data.isPlaying = true;
-          }
-        }, 200);
-      }
-    }, delay);
+  steps.forEach(({s,delay,msg})=>{
+    setTimeout(()=>{data.genStep=s;if(msg)data.genMsg=msg;},delay);
   });
-}
 
-function togglePlay(data) {
-  if (!data.currentSong || !globalAudio) return;
-  if (data.isPlaying) {
-    globalAudio.pause();
-    data.isPlaying = false;
-    if (waveAnimId) { cancelAnimationFrame(waveAnimId); waveAnimId = null; }
-  } else {
-    globalAudio.play().catch(() => {});
-    data.isPlaying = true;
-    const canvas = document.getElementById('demo-wave-canvas');
-    if (canvas && globalAnalyser) drawRealWave(canvas, globalAnalyser, '#00f5ff', '#7c3aed');
-    else if (canvas) drawSimulatedWave(canvas, '#00f5ff', '#7c3aed');
+  try{
+    const fullPrompt=`${data.style.toLowerCase()} music, ${data.emotion.toLowerCase()} mood, ${data.tempo} BPM. ${data.promptText}`;
+    await new Promise(r=>setTimeout(r,3700));
+    data.genMsg='Model loading… this may take 20–60s the first time.';
+    const audioUrl=await callMusicGen(fullPrompt, data.hfToken.trim()||null);
+    data.genStep=5; data.genMsg=''; data.generating=false; data.generated=true;
+    const dlBtn=document.getElementById('demo-dl-wav');
+    if(dlBtn)dlBtn.href=audioUrl;
+    setTimeout(()=>{
+      const canvas=document.getElementById('demo-wave');
+      if(canvas){
+        startAudio(audioUrl,canvas,'#d4a853','#7c6ef9',()=>{data.isPlaying=false;});
+        data.isPlaying=true;
+      }
+    },200);
+  }catch(err){
+    data.generating=false; data.genStep=0;
+    data.genError='⚠ MusicGen API: '+err.message+'. The model may be loading (try again in ~30s) or rate-limited. Without a HF token, the free tier has limits.';
+    data.genMsg='';
   }
-}
-
-// ═══════ GALLERY PLAYBACK ═══════
-const galleryColors = {
-  'song_01_pop_happy': ['#00f5ff', '#0066ff'],
-  'song_02_classical_sad': ['#a78bfa', '#7c3aed'],
-  'song_03_ambient_peaceful': ['#34d399', '#00f5ff'],
-  'song_04_jazz_tense': ['#f59e0b', '#ef4444']
 };
 
-let currentGallerySong = null;
-let galleryPlaying = false;
-
-function playGalleryCard(songId, name, prompt, cardNum) {
-  currentGallerySong = songId;
-  currentGlobalMode = 'gallery';
-
-  document.querySelectorAll('.gallery-card').forEach(c => c.classList.remove('active'));
-  const card = document.querySelector('[data-song="'+songId+'"]');
-  if (card) card.classList.add('active');
-
-  const player = document.getElementById('gallery-player');
-  player.style.display = 'block';
-  document.getElementById('gallery-player-name').textContent = name;
-  document.getElementById('gallery-player-sub').textContent = prompt;
-
-  const canvas = document.getElementById('gallery-wave-canvas');
-  const colors = galleryColors[songId] || ['#00f5ff', '#7c3aed'];
-
-  playSong(songId, canvas, colors[0], colors[1], () => {
-    galleryPlaying = false;
-    document.getElementById('gallery-play-btn').textContent = '▶';
-  });
-  galleryPlaying = true;
-  document.getElementById('gallery-play-btn').textContent = '❚❚';
-}
-
-function toggleGalleryPlay() {
-  if (!currentGallerySong || !globalAudio) return;
-  if (galleryPlaying) {
-    globalAudio.pause();
-    galleryPlaying = false;
-    document.getElementById('gallery-play-btn').textContent = '▶';
-    if (waveAnimId) { cancelAnimationFrame(waveAnimId); waveAnimId = null; }
-  } else {
-    globalAudio.play().catch(() => {});
-    galleryPlaying = true;
-    document.getElementById('gallery-play-btn').textContent = '❚❚';
-    const canvas = document.getElementById('gallery-wave-canvas');
-    const colors = galleryColors[currentGallerySong] || ['#00f5ff', '#7c3aed'];
-    if (globalAnalyser) drawRealWave(canvas, globalAnalyser, colors[0], colors[1]);
-    else drawSimulatedWave(canvas, colors[0], colors[1]);
+window.toggleDemoPlay=function(data){
+  if(!globalAudio)return;
+  if(data.isPlaying){
+    globalAudio.pause();data.isPlaying=false;
+    if(wafId){cancelAnimationFrame(wafId);wafId=null;}
+  }else{
+    globalAudio.play().catch(()=>{});data.isPlaying=true;
+    const canvas=document.getElementById('demo-wave');
+    if(canvas&&globalAnalyser)drawWave(canvas,globalAnalyser,'#d4a853','#7c6ef9');
+    else if(canvas)drawSimWave(canvas,'#d4a853','#7c6ef9');
   }
-}
-
-// ═══════ GSAP HERO PARALLAX ═══════
-gsap.to('.hero-orb', {
-  y: -50, ease: 'none',
-  scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true }
-});
-gsap.to('.hero-content', {
-  y: 40, ease: 'none',
-  scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true }
-});
-
-// ═══════ ENTRANCE ANIMATIONS ═══════
-gsap.fromTo('.hero-content', { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 1.2, ease: 'power4.out', delay: 0.2 });
-gsap.fromTo('.hero-orb', { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 1.5, ease: 'power3.out', delay: 0.5 });
-gsap.fromTo('nav', { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', delay: 0.1 });
+};
 </script>
 </body>
 </html>
