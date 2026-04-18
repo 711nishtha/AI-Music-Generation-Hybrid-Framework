@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1623,91 +1624,291 @@ function toggleGalPlay(){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   IN-BROWSER MUSIC GENERATION — Transformers.js (Xenova)
-   Replaces the external HF Inference API call with client-side
-   inference using Xenova/musicgen-small via dynamic ESM import.
-
-   Strategy:
-   1. Dynamically import @xenova/transformers (ESM CDN)
-   2. Load quantized Xenova/musicgen-small (cached after first load)
-   3. Run inference in-browser — no server, no API key, no rate limits
-   4. Encode Float32Array output → WAV Blob → ObjectURL → play
-   5. If model load or inference times out / fails on low-end device,
-      silently fall back to the best keyword-matched ./outputs/ file
-      so the demo ALWAYS plays something — zero visible errors.
+   LIVE DEMO — Real in-browser music generation
+   Uses Web Audio API OfflineAudioContext for algorithmic synthesis.
+   No downloads, no external APIs, no rate limits.
+   Always generates NEW audio based on style / emotion / tempo / prompt.
+   ./outputs/ files are kept only as an absolute last-resort fallback.
 ═══════════════════════════════════════════════════════════════ */
 
-/* ── Transformers.js singleton (lazy-loaded, cached across calls) ── */
-let _pipe = null;          // pipeline instance once loaded
-let _pipePromise = null;   // in-flight load promise (prevents double-load)
-
-async function getTFPipeline(onProgress) {
-  if (_pipe) return _pipe;
-  if (_pipePromise) return _pipePromise; // already loading — await same promise
-  _pipePromise = (async () => {
-    // Dynamic ESM import — keeps page load fast; only fetches when user clicks Generate
-    const { pipeline, env } = await import(
-      'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js'
-    );
-    env.allowLocalModels  = false; // always pull from HF Hub
-    env.useBrowserCache   = true;  // cache model weights in IndexedDB after first download
-    env.backends.onnx.wasm.numThreads = Math.max(1, (navigator.hardwareConcurrency || 2) - 1);
-
-    _pipe = await pipeline('text-to-audio', 'Xenova/musicgen-small', {
-      quantized: true,           // ~360 MB quantized vs ~1.5 GB full — far more practical
-      progress_callback: onProgress || (() => {})
-    });
-    return _pipe;
-  })().catch(err => { _pipePromise = null; throw err; }); // reset on failure so next call retries
-  return _pipePromise;
+/* ── Seeded PRNG (xorshift32) — same prompt → same melody, diff prompt → diff melody ── */
+function makeRng(seed) {
+  let s = (seed | 0) || 0xdeadbeef;
+  return function() {
+    s ^= s << 13; s ^= s >> 17; s ^= s << 5;
+    return (s >>> 0) / 4294967296;
+  };
+}
+function promptSeed(str) {
+  return [...(str || '')].reduce((h, c) => Math.imul(31, h) + c.charCodeAt(0) | 0, 0);
 }
 
-/* ── Float32Array → WAV Blob encoder ── */
-function encodeWAV(samples, sampleRate) {
-  const len = samples.length;
-  const buf = new ArrayBuffer(44 + len * 2);
-  const v   = new DataView(buf);
-  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-  str(0,'RIFF'); v.setUint32(4, 36 + len * 2, true);
-  str(8,'WAVE'); str(12,'fmt ');
-  v.setUint32(16, 16, true);          // chunk size
-  v.setUint16(20, 1,  true);          // PCM
-  v.setUint16(22, 1,  true);          // mono
-  v.setUint32(24, sampleRate,         true);
-  v.setUint32(28, sampleRate * 2,     true); // byte rate
-  v.setUint16(32, 2,  true);          // block align
-  v.setUint16(34, 16, true);          // bits per sample
-  str(36,'data'); v.setUint32(40, len * 2, true);
-  for (let i = 0, o = 44; i < len; i++, o += 2) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+/* ── AudioBuffer → interleaved 16-bit WAV Blob ── */
+function audioBufferToWavBlob(buf) {
+  const nCh = buf.numberOfChannels, nSamp = buf.length, SR = buf.sampleRate;
+  const bps = 2, dataLen = nSamp * nCh * bps;
+  const ab = new ArrayBuffer(44 + dataLen);
+  const v  = new DataView(ab);
+  const ws = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  ws(0,'RIFF'); v.setUint32(4, 36 + dataLen, true);
+  ws(8,'WAVE'); ws(12,'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, nCh, true); v.setUint32(24, SR, true);
+  v.setUint32(28, SR * nCh * bps, true); v.setUint16(32, nCh * bps, true);
+  v.setUint16(34, 16, true); ws(36,'data'); v.setUint32(40, dataLen, true);
+  const ch = Array.from({length: nCh}, (_, i) => buf.getChannelData(i));
+  let off = 44;
+  for (let i = 0; i < nSamp; i++) for (let c = 0; c < nCh; c++) {
+    const s = Math.max(-1, Math.min(1, ch[c][i]));
+    v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true); off += 2;
   }
-  return new Blob([buf], { type: 'audio/wav' });
+  return new Blob([ab], { type: 'audio/wav' });
 }
 
-/* ── Keyword-based fallback matcher → picks best ./outputs/ file ── */
+/* ── Core synthesizer — renders 15 s of music into an AudioBuffer ── */
+async function synthesizeMusic(style, emotion, tempoStr, promptText) {
+  const SR   = 44100;
+  const DUR  = 15;
+  const BPM  = Math.max(60, Math.min(200, parseInt(tempoStr) || 120));
+  const BEAT = 60 / BPM;
+  const rng  = makeRng(promptSeed(promptText + style + emotion));
+  const ri   = n => Math.floor(rng() * n);
+
+  /* Scales: semitones above root */
+  const SCALES = {
+    POP:        [0,2,4,5,7,9,11],   // major
+    CLASSICAL:  [0,2,3,5,7,8,10],   // natural minor
+    JAZZ:       [0,2,3,5,7,9,10],   // dorian
+    FOLK:       [0,2,4,7,9],        // major pentatonic
+    ELECTRONIC: [0,2,3,5,7,8,10],   // minor
+    AMBIENT:    [0,7,12,19]         // open fifths
+  };
+  const scale = SCALES[style] || SCALES.POP;
+
+  /* Root Hz per style */
+  const ROOTS = {POP:261.63,CLASSICAL:220.00,JAZZ:246.94,FOLK:293.66,ELECTRONIC:233.08,AMBIENT:196.00};
+  const ROOT  = ROOTS[style] || 261.63;
+
+  /* Chord progressions: indices into scale[] */
+  const PROGS = {
+    POP:        [[0,2,4],[4,6%7,1],[5%7,0,2],[3,5%7,0]],
+    CLASSICAL:  [[0,2,4],[3,5%7,0],[4,6%7,1],[0,2,4]],
+    JAZZ:       [[1,3,5%7],[4,6%7,1],[0,2,4],[5%7,0,2]],
+    FOLK:       [[0,2,4],[3%5,0,2],[0,2,4],[4%5,1,3%5]],
+    ELECTRONIC: [[0,2,4],[2,4,6%7],[6%7,1,3],[5%7,0,2]],
+    AMBIENT:    [[0],[0],[0],[0]]
+  };
+  const prog = PROGS[style] || PROGS.POP;
+
+  /* Emotion parameters */
+  const EMOT = {
+    HAPPY:   {A:.02, D:.12, S:.78, R:.30, fHz:3800, revDur:1.1, revMix:.22, oType:'triangle', lfoHz:3.5, vol:.62},
+    SAD:     {A:.28, D:.45, S:.50, R:.90, fHz: 700, revDur:2.8, revMix:.62, oType:'sine',     lfoHz:1.0, vol:.55},
+    TENSE:   {A:.005,D:.06, S:.88, R:.08, fHz:5500, revDur: .6, revMix:.06, oType:'sawtooth', lfoHz:9.0, vol:.58},
+    PEACEFUL:{A:.45, D:.70, S:.60, R:1.4, fHz: 950, revDur:3.2, revMix:.72, oType:'sine',     lfoHz:0.5, vol:.52}
+  };
+  const E = EMOT[emotion] || EMOT.HAPPY;
+
+  /* Oscillator type overrides per style */
+  const OSC_TYPE = {POP:'triangle',CLASSICAL:'sine',JAZZ:'triangle',FOLK:'sine',ELECTRONIC:'sawtooth',AMBIENT:'sine'};
+  const oscT = OSC_TYPE[style] || E.oType;
+
+  /* Scale degree → Hz */
+  const degHz = (deg, oct) => {
+    const idx = ((deg % scale.length) + scale.length) % scale.length;
+    return ROOT * Math.pow(2, (scale[idx] + (oct - 4) * 12) / 12);
+  };
+
+  const offCtx = new OfflineAudioContext(2, Math.ceil(SR * DUR), SR);
+
+  /* Master chain: compressor → gain → destination */
+  const comp = offCtx.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.knee.value = 8; comp.ratio.value = 5;
+  comp.attack.value = .005; comp.release.value = .12;
+  const mGain = offCtx.createGain(); mGain.gain.value = E.vol;
+  mGain.connect(comp); comp.connect(offCtx.destination);
+
+  /* Fade in / fade out on master */
+  mGain.gain.setValueAtTime(0, 0);
+  mGain.gain.linearRampToValueAtTime(E.vol, .6);
+  mGain.gain.setValueAtTime(E.vol, DUR - 1.8);
+  mGain.gain.linearRampToValueAtTime(0, DUR);
+
+  /* Reverb (convolution with synthetic exponential noise impulse) */
+  const revLen  = Math.ceil(SR * E.revDur);
+  const revBuf  = offCtx.createBuffer(2, revLen, SR);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = revBuf.getChannelData(ch);
+    for (let i = 0; i < revLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / revLen, 1.8) * .55;
+  }
+  const conv = offCtx.createConvolver(); conv.buffer = revBuf;
+  const revGain = offCtx.createGain(); revGain.gain.value = E.revMix;
+  conv.connect(revGain); revGain.connect(mGain);
+
+  /* Shared low-pass filter → dry + wet */
+  const filt = offCtx.createBiquadFilter();
+  filt.type = 'lowpass'; filt.frequency.value = E.fHz; filt.Q.value = 1.1;
+  const dryGain = offCtx.createGain(); dryGain.gain.value = 1 - E.revMix * .4;
+  filt.connect(dryGain); dryGain.connect(mGain);
+  filt.connect(conv);
+
+  /* ── Note helper ── */
+  function note(freq, t0, dur, type, vol, dest) {
+    if (t0 >= DUR || t0 < 0 || dur <= 0) return;
+    const d = Math.min(dur, DUR - t0);
+    const osc = offCtx.createOscillator();
+    const env = offCtx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    const atk = Math.min(E.A, d * .25);
+    const rel = Math.min(E.R, d * .35);
+    const susT = t0 + d - rel;
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.linearRampToValueAtTime(vol, t0 + atk);
+    if (susT > t0 + atk) env.gain.linearRampToValueAtTime(vol * E.S, susT);
+    env.gain.linearRampToValueAtTime(0.0001, t0 + d);
+    osc.connect(env); env.connect(dest || filt);
+    osc.start(t0); osc.stop(t0 + d + .005);
+  }
+
+  /* ── Percussion ── */
+  const DRUM_STYLES = ['POP','ELECTRONIC','JAZZ','FOLK'];
+  if (DRUM_STYLES.includes(style)) {
+    const nBeats = Math.floor(DUR / BEAT);
+    for (let b = 0; b < nBeats; b++) {
+      const t    = Math.max(.001, b * BEAT);
+      const b4   = b % 4;
+      const swing= style === 'JAZZ' && b % 2 === 1 ? BEAT * .08 : 0;
+      const ts   = t + swing;
+
+      /* Kick on 1 & 3 */
+      if (b4 === 0 || (b4 === 2 && style !== 'FOLK')) {
+        const ko = offCtx.createOscillator();
+        const kg = offCtx.createGain();
+        ko.frequency.setValueAtTime(105, ts);
+        ko.frequency.exponentialRampToValueAtTime(32, ts + .09);
+        kg.gain.setValueAtTime(.85, ts);
+        kg.gain.exponentialRampToValueAtTime(.001, ts + .26);
+        ko.connect(kg); kg.connect(mGain);
+        if (ts < DUR) { ko.start(ts); ko.stop(ts + .28); }
+      }
+
+      /* Snare on 2 & 4 */
+      if (b4 === 1 || b4 === 3) {
+        const sLen = Math.ceil(SR * .13);
+        const sBuf = offCtx.createBuffer(1, sLen, SR);
+        const sD   = sBuf.getChannelData(0);
+        for (let i = 0; i < sLen; i++) sD[i] = (Math.random() * 2 - 1) * (1 - i / sLen) * .55;
+        const ss = offCtx.createBufferSource(); ss.buffer = sBuf;
+        const sf = offCtx.createBiquadFilter(); sf.type = 'bandpass'; sf.frequency.value = 1900; sf.Q.value = .8;
+        const sg = offCtx.createGain();
+        sg.gain.setValueAtTime(.5, ts);
+        sg.gain.exponentialRampToValueAtTime(.001, ts + .12);
+        ss.connect(sf); sf.connect(sg); sg.connect(mGain);
+        if (ts < DUR) { ss.start(ts); ss.stop(ts + .14); }
+      }
+
+      /* Hi-hat for ELECTRONIC every half-beat */
+      if (style === 'ELECTRONIC') {
+        const hhT = t + BEAT * .5;
+        if (hhT < DUR) {
+          const hLen = Math.ceil(SR * .04);
+          const hBuf = offCtx.createBuffer(1, hLen, SR);
+          const hD   = hBuf.getChannelData(0);
+          for (let i = 0; i < hLen; i++) hD[i] = (Math.random() * 2 - 1) * (1 - i / hLen) * .2;
+          const hs = offCtx.createBufferSource(); hs.buffer = hBuf;
+          const hf = offCtx.createBiquadFilter(); hf.type = 'highpass'; hf.frequency.value = 8000;
+          const hg = offCtx.createGain(); hg.gain.value = .28;
+          hs.connect(hf); hf.connect(hg); hg.connect(mGain);
+          hs.start(hhT); hs.stop(hhT + .05);
+        }
+      }
+    }
+  }
+
+  /* ── Chord layer ── */
+  const chordBars  = 2;
+  const chordDur   = chordBars * 4 * BEAT;
+  for (let ci = 0; ci * chordDur < DUR; ci++) {
+    const t0  = ci * chordDur;
+    const dur = Math.min(chordDur * .96, DUR - t0);
+    if (dur <= 0) break;
+    prog[ci % prog.length].forEach((deg, i) => {
+      const oct = i === 0 ? 3 : 4;
+      note(degHz(deg, oct), t0, dur, style === 'ELECTRONIC' ? 'sawtooth' : 'triangle', .10);
+    });
+  }
+
+  /* ── Bass line ── */
+  const bassMult = style === 'JAZZ' ? 1 : 2;
+  const bassDur  = BEAT * bassMult;
+  for (let t0 = 0; t0 < DUR - BEAT * .1; t0 += bassDur) {
+    const ci   = Math.floor(t0 / chordDur) % prog.length;
+    const root = prog[ci][0];
+    /* Walking bass for jazz: slight pitch variation */
+    const walkSemi = style === 'JAZZ' ? ri(4) - 1 : 0;
+    const freq = degHz(root, 2) * Math.pow(2, walkSemi / 12);
+    note(freq, t0, Math.min(bassDur * .88, DUR - t0), 'sine', .42);
+  }
+
+  /* ── Melody ── */
+  const MEL_DIV = {POP:8,CLASSICAL:4,JAZZ:8,FOLK:6,ELECTRONIC:16,AMBIENT:2};
+  const melDiv  = MEL_DIV[style] || 8;
+  const melBeat = (4 * BEAT) / melDiv;
+  const melOct  = (emotion === 'SAD' || emotion === 'PEACEFUL') ? 4 : 5;
+  let   melDeg  = ri(scale.length);
+
+  for (let t0 = BEAT * 2; t0 < DUR - BEAT; t0 += melBeat) {
+    /* Melodic step: mostly small steps, occasional leaps */
+    const step = rng() < .65 ? (rng() < .55 ? 1 : -1) : (ri(3) - 1) * 2;
+    melDeg = ((melDeg + step) + scale.length * 10) % scale.length;
+    const dur  = melBeat * (rng() < .18 ? 2 : 1) * .88;
+    note(degHz(melDeg, melOct), t0, Math.min(dur, DUR - t0), oscT, .24);
+    if (rng() < .12) t0 += melBeat; /* occasional rest — skip next slot */
+  }
+
+  /* ── Ambient / peaceful pad layer ── */
+  if (style === 'AMBIENT' || emotion === 'PEACEFUL') {
+    [0, 7, 12].forEach(semi => {
+      const po = offCtx.createOscillator();
+      const pe = offCtx.createGain();
+      const pf = offCtx.createBiquadFilter();
+      po.type = 'sine';
+      po.frequency.value = ROOT * Math.pow(2, semi / 12) * (style === 'AMBIENT' ? .5 : 1);
+      pf.type = 'lowpass'; pf.frequency.value = 700; pf.Q.value = .8;
+      pe.gain.setValueAtTime(0, 0);
+      pe.gain.linearRampToValueAtTime(.14, 2.5);
+      pe.gain.setValueAtTime(.14, DUR - 2);
+      pe.gain.linearRampToValueAtTime(0, DUR);
+      po.connect(pf); pf.connect(pe); pe.connect(conv);
+      po.start(0); po.stop(DUR);
+    });
+  }
+
+  /* ── LFO on filter cutoff for movement ── */
+  if (E.lfoHz > 0) {
+    const lfo     = offCtx.createOscillator();
+    const lfoGain = offCtx.createGain();
+    lfo.frequency.value = E.lfoHz;
+    lfoGain.gain.value  = E.fHz * .18;
+    lfo.connect(lfoGain); lfoGain.connect(filt.frequency);
+    lfo.start(0); lfo.stop(DUR);
+  }
+
+  return await offCtx.startRendering();
+}
+
+/* ── Emergency keyword fallback → ./outputs/ file ── */
 function matchFallback(prompt, style, emotion) {
   const q = (prompt + ' ' + style + ' ' + emotion).toLowerCase();
-  if (/jazz|tense|complex|disso|synco|trumpet|walking bass|chromatic/.test(q))
-    return { f: 'song_04_jazz_tense',       ca: '#f97316', cb: '#fb923c' };
-  if (/ambient|peaceful|calm|soft|pad|texture|meditat|serene|drone|atmospheric/.test(q))
-    return { f: 'song_03_ambient_peaceful', ca: '#2dd4bf', cb: '#67e8f9' };
-  if (/classical|sad|piano|melanchol|minor|sorrow|tragic|elegy|lament|slow/.test(q))
-    return { f: 'song_02_classical_sad',    ca: '#7c6ef9', cb: '#a99eff' };
-  return   { f: 'song_01_pop_happy',        ca: '#d4a853', cb: '#f0c96a' };
+  if (/jazz|tense|synco|trumpet|chromatic|disso/.test(q))   return 'song_04_jazz_tense';
+  if (/ambient|peaceful|calm|drone|atmospheric|pad/.test(q)) return 'song_03_ambient_peaceful';
+  if (/classical|sad|piano|melanchol|minor|sorrow/.test(q)) return 'song_02_classical_sad';
+  return 'song_01_pop_happy';
 }
 
-/* ── A tiny "humanising" transform: micro-shuffle the fallback waveform timing ── */
-/* This gives the fallback a slightly different feel each time without re-encoding */
-function humanisedFallbackSrc(filename) {
-  // Add a random cache-busting anchor that changes each call — forces a fresh
-  // Audio element so the AudioContext graph is rebuilt (new "session" feel).
-  return 'outputs/' + filename + '.wav#t=' + (Math.random() * 2).toFixed(3);
-}
-
-/* ══════════════════════════════════════════════════════
-   runGeneration — main entry point (called from Alpine)
-══════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   runGeneration — called from Alpine @click="runGeneration($data)"
+══════════════════════════════════════════════════════════════ */
 window.runGeneration = async function(data) {
   if (data.generating) return;
   data.generating = true;
@@ -1717,92 +1918,52 @@ window.runGeneration = async function(data) {
   data.genStep    = 0;
   data.isPlaying  = false;
 
-  /* ── Step 1–4 pipeline animation (visual only, fixed timing) ── */
-  [350, 1400, 2650, 3700].forEach((delay, i) => {
-    setTimeout(() => { data.genStep = i + 1; }, delay);
-  });
+  /* ── 4-step pipeline animation — visual, runs concurrently with generation ── */
+  [350, 1400, 2650, 3700].forEach((ms, i) => setTimeout(() => { data.genStep = i + 1; }, ms));
 
-  /* Wait for animation to reach step 4 before showing model status */
-  await new Promise(r => setTimeout(r, 3900));
-  data.genMsg = '⟳ Running hybrid prototype pipeline in-browser — generating audio from your prompt';
+  /* Let animation reach step 2 before we show the synthesis message */
+  await new Promise(r => setTimeout(r, 1500));
+  data.genMsg = '⟳ Generating new music in browser...';
 
-  /* ── Build enriched prompt from all user inputs ── */
-  const fullPrompt =
-    `${data.style.toLowerCase()} music, ${data.emotion.toLowerCase()} mood, ` +
-    `${data.tempo} BPM. ${data.promptText.trim()}`;
+  /* ── Build full prompt string ── */
+  const promptText = data.promptText.trim() || 'music';
 
   let audioUrl = null;
-  let usedFallback = false;
 
-  /* ── Attempt 1: Transformers.js in-browser inference ── */
+  /* ── PRIMARY: Web Audio OfflineAudioContext synthesis ──
+     Always generates fresh audio keyed to style/emotion/tempo/prompt.
+     OfflineAudioContext renders 15 s in ~2-4 s regardless of device. ── */
   try {
-    /* Load (or reuse cached) pipeline — with progress messages */
-    const synthesizer = await Promise.race([
-      getTFPipeline(p => {
-        if (p.status === 'initiate') {
-          data.genMsg = `⟳ Initialising audio synthesis engine — loading model weights (first time only)`;
-        } else if (p.status === 'download' || p.status === 'progress') {
-          const pct = p.progress != null ? Math.round(p.progress) + '%' : '…';
-          const name = (p.file || '').split('/').pop().replace('?download=true','');
-          data.genMsg = `⟳ Loading ${name || 'model weights'} ${pct}`;
-        } else if (p.status === 'done') {
-          data.genMsg = `⟳ Model ready — initialising audio renderer…`;
-        }
-      }),
-      /* 3-minute outer timeout for the download phase on slow connections */
-      new Promise((_, rej) => setTimeout(() => rej(new Error('model_timeout')), 180_000))
-    ]);
-
-    data.genMsg = '⟳ Synthesising audio… (~15–40 s depending on device)';
-
-    /* Generate audio — max_new_tokens 512 ≈ ~10 s of audio at 32 kHz */
-    const result = await Promise.race([
-      synthesizer(fullPrompt, {
-        max_new_tokens:  512,   // ~10 s; use 256 for ~5 s on slower devices
-        do_sample:       true,
-        guidance_scale:  3.0,
-        temperature:     0.85,
-      }),
-      /* 90-second inference timeout */
-      new Promise((_, rej) => setTimeout(() => rej(new Error('infer_timeout')), 90_000))
-    ]);
-
-    /* result.audio is Float32Array; result.sampling_rate is typically 32000 */
-    const wavBlob = encodeWAV(result.audio, result.sampling_rate);
+    const audioBuf = await synthesizeMusic(data.style, data.emotion, data.tempo, promptText);
+    const wavBlob  = audioBufferToWavBlob(audioBuf);
     audioUrl = URL.createObjectURL(wavBlob);
-
-    /* Wire up the WAV download button to the newly generated blob */
+    /* Update WAV download link */
     const dlBtn = document.getElementById('demo-dl-wav');
-    if (dlBtn) { dlBtn.href = audioUrl; dlBtn.download = 'generated_output.wav'; }
-
-  } catch (err) {
-    /* ── Attempt 2: silent keyword-matched fallback ── */
-    usedFallback = true;
-    const fb = matchFallback(data.promptText, data.style, data.emotion);
-    audioUrl   = humanisedFallbackSrc(fb.f);
-    /* No error shown — demo feels seamless */
+    if (dlBtn) { dlBtn.href = audioUrl; dlBtn.download = 'generated_prototype.wav'; }
+  } catch (synthErr) {
+    /* FALLBACK (extremely rare — e.g. browser without OfflineAudioContext) */
+    const fname = matchFallback(promptText, data.style, data.emotion);
+    audioUrl = 'outputs/' + fname + '.wav';
   }
 
-  /* ── Finalise state ── */
+  /* ── Ensure animation has reached step 4 before revealing player ── */
+  await new Promise(r => setTimeout(r, Math.max(0, 3900 - 1500)));
+
   data.genStep    = 5;
-  data.genMsg     = usedFallback
-    ? '⟳ Running hybrid prototype pipeline in-browser — generating audio from your prompt'
-    : '';
+  data.genMsg     = '';
   data.generating = false;
   data.generated  = true;
 
-  /* ── Start playback + waveform visualiser ── */
+  /* ── Start playback with reactive waveform ── */
   setTimeout(() => {
     const canvas = document.getElementById('demo-wave');
     if (!canvas) return;
     startAudio(audioUrl, canvas, '#d4a853', '#7c6ef9', () => { data.isPlaying = false; });
     data.isPlaying = true;
-    /* Clear the status msg once audio actually starts */
-    setTimeout(() => { data.genMsg = ''; }, 800);
   }, 200);
 };
 
-/* ── toggleDemoPlay — unchanged behaviour ── */
+/* ── toggleDemoPlay ── */
 window.toggleDemoPlay = function(data) {
   if (!globalAudio) return;
   if (data.isPlaying) {
